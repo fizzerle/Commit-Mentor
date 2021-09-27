@@ -141,18 +141,4 @@ for repo in repos:
     else:
         print(repo['full_name'])
 
-
-# alle commits durchgehen
-# nur die rausfiltern die zu den 5 häufigsten commitern gehören
-# alle messages von denen ausgeben um zu sehen ob da nur müll dabei ist
-
-# conventional commits beachten
-# ---links zu issues und pr's resolven---
-# ---bot messages herausfiltern wie merge, auto commit, leere commits---
-
-
-# Zusamenfassung wie ein Paper zur Generierung eines Datasets die Daten abgespeichert hat
-# https://github.com/DeepSoftwareAnalytics/CommitMsgEmpirical/blob/main/dataset/ReadMe.md#raw-data
-
-
 print(str(sum)+"/"+str(len(repos)))
