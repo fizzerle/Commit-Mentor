@@ -2,6 +2,69 @@ import requests
 from pprint import pprint
 import urllib
 import re
+import logging
+from pprint import pformat
+
+# Adding log level trace: https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility/13638084#13638084
+def addLoggingLevel(levelName, levelNum, methodName=None):
+    """
+    Comprehensively adds a new logging level to the `logging` module and the
+    currently configured logging class.
+
+    `levelName` becomes an attribute of the `logging` module with the value
+    `levelNum`. `methodName` becomes a convenience method for both `logging`
+    itself and the class returned by `logging.getLoggerClass()` (usually just
+    `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
+    used.
+
+    To avoid accidental clobberings of existing attributes, this method will
+    raise an `AttributeError` if the level name is already an attribute of the
+    `logging` module or if the method name is already present 
+
+    Example
+    -------
+    >>> addLoggingLevel('TRACE', logging.DEBUG - 5)
+    >>> logging.getLogger(__name__).setLevel("TRACE")
+    >>> logging.getLogger(__name__).trace('that worked')
+    >>> logging.trace('so did this')
+    >>> logging.TRACE
+    5
+
+    """
+    if not methodName:
+        methodName = levelName.lower()
+
+    if hasattr(logging, levelName):
+       raise AttributeError('{} already defined in logging module'.format(levelName))
+    if hasattr(logging, methodName):
+       raise AttributeError('{} already defined in logging module'.format(methodName))
+    if hasattr(logging.getLoggerClass(), methodName):
+       raise AttributeError('{} already defined in logger class'.format(methodName))
+
+    # This method was inspired by the answers to Stack Overflow post
+    # http://stackoverflow.com/q/2183233/2988730, especially
+    # http://stackoverflow.com/a/13638084/2988730
+    def logForLevel(self, message, *args, **kwargs):
+        if self.isEnabledFor(levelNum):
+            self._log(levelNum, message, args, **kwargs)
+    def logToRoot(message, *args, **kwargs):
+        logging.log(levelNum, message, *args, **kwargs)
+
+    logging.addLevelName(levelNum, levelName)
+    setattr(logging, levelName, levelNum)
+    setattr(logging.getLoggerClass(), methodName, logForLevel)
+    setattr(logging, methodName, logToRoot)
+
+
+addLoggingLevel('TRACE', logging.DEBUG - 5)
+
+logging.basicConfig()
+
+# By default the root logger is set to WARNING and all loggers you define
+# inherit that value. Here we set the root logger to NOTSET. This logging
+# level is automatically inherited by all existing and new sub-loggers
+# that do not set a less verbose level.
+logging.root.setLevel(logging.INFO)
 
 # search commits with certain text
 token = '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'
@@ -28,10 +91,13 @@ def sendRequest(url,params = None,header = None):
             'per_page': 1,
             'page': 1,
         }
+    logging.trace("sending request: "+ url + str(params) + str(headers))
+
     resp = requests.request('GET', url, params=params, headers=headers)
     if (resp.status_code != 200):
         raise Exception(f'invalid github response: {resp.content}')
 
+    logging.trace("response: "+ pformat(resp.json()))
     return resp
 
 def getBestJavaRepositories():
@@ -68,6 +134,7 @@ def commit_count(url, sha):
 
 
 def getCommitMessageInRepoForUsers(repoUrl, branch, userIds):
+    logging.info("Getting Commit Message In Repo for Users " + str(userIds))
     params = {
         'sha': branch,
         'per_page': 10,
@@ -84,7 +151,6 @@ def getCommitMessageInRepoForUsers(repoUrl, branch, userIds):
 
     for commit in resp:
         commitAuthorId = commit['author']['id']
-        print(commitAuthorId)
         for userId in userIds:
             if(userId == commitAuthorId):
                 messages.append(commit['commit']['message'])
@@ -115,34 +181,24 @@ def testGetCommitMessageInRepoForUser(token):
     messages = getCommitMessageInRepoForUsers("https://api.github.com/repos/elastic/elasticsearch/commits", "master", [14179713])
     filterMessages(messages)
     for msg in messages:
-        logg
         ids = getIdsInMessage(msg)
         print(ids)
         for id in ids:
             issue = sendRequest("https://api.github.com/repos/elastic/elasticsearch/issues/"+id).json()
-            print(issue['body'])
             idsInIssue = getIdsInMessage(issue['body'])
             for idInIssue in idsInIssue:
                 issue = sendRequest("https://api.github.com/repos/elastic/elasticsearch/issues/"+idInIssue).json()
-                print(issue['body'])
-        print("----------------")
 
 def testGetCommitMessageInRepoForUserSmallRepository(token):
     messages = getCommitMessageInRepoForUsers("https://api.github.com/repos/fizzerle/feedbacktool/commits", "master", [14179713])
     filterMessages(messages)
     for msg in messages:
-        print("----------------")
-        print(msg)
         ids = getIdsInMessage(msg)
-        print(ids)
         for id in ids:
             issue = sendRequest("https://api.github.com/repos/fizzerle/feedbacktool/issues/"+id).json()
-            print(issue['body'])
             idsInIssue = getIdsInMessage(issue['body'])
             for idInIssue in idsInIssue:
                 issue = sendRequest("https://api.github.com/repos/fizzerle/feedbacktool/issues/"+idInIssue).json()
-                print(issue['body'])
-        print("----------------")
 
 
 testGetCommitMessageInRepoForUserSmallRepository(token)
@@ -152,13 +208,13 @@ repos = []
 sum = 0
 for repo in repos:
     if(commit_count(repo['commits_url'][:-6], repo['default_branch'], token) > 5000):
-        print("--> " + repo['full_name'])
+        print("[x]" + repo['full_name'])
         contribtors = sendRequest(repo['contributors_url']).json()
 
         contributorIds = [contributor['id'] for contributor in contribtors]
         getCommitMessageInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], contributorIds)
         sum = sum + 1
     else:
-        print(repo['full_name'])
+        print("[ ]" + repo['full_name'])
 
-print(str(sum)+"/"+str(len(repos)))
+logging.info("Number of Repositories selected that get processed further " + str(sum)+"/"+str(len(repos)))
