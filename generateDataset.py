@@ -32,7 +32,7 @@ def sendRequest(url,params = None,header = None):
     if (resp.status_code != 200):
         raise Exception(f'invalid github response: {resp.content}')
 
-    return resp.json()
+    return resp
 
 def getBestJavaRepositories():
     params = {
@@ -40,7 +40,7 @@ def getBestJavaRepositories():
         'per_page': 6,
         'page': 1,
     }
-    r = sendRequest("https://api.github.com/search/repositories",params = params)
+    r = sendRequest("https://api.github.com/search/repositories",params = params).json()
 
     return r['items']
 
@@ -53,7 +53,7 @@ def commit_count(url, sha):
         'sha': sha,
         'per_page': 1,
     }
-    resp = sendRequest(url,params)
+    resp = sendRequest(url,params).json()
     # check the resp count, just in case there are 0 commits
     commit_count = len(resp)
     last_page = resp.links.get('last')
@@ -67,22 +67,29 @@ def commit_count(url, sha):
     return commit_count
 
 
-def getCommitMessageInRepoForUser(repoUrl, branch, userId):
+def getCommitMessageInRepoForUsers(repoUrl, branch, userIds):
     params = {
         'sha': branch,
         'per_page': 1,
         'page': 1,
     }
 
+    #TODO 
     resp = sendRequest(repoUrl,params)
+    while 'next' in resp.links.keys():
+        res=sendRequest(res.links['next']['url']).json()
+        resp.extend(res.json())
+    pprint(resp)
 
     pprint(resp)
     messages = []
+
     for commit in resp:
         commitAuthorId = commit['author']['id']
         print(commitAuthorId)
-        if(userId == commitAuthorId):
-            messages.append(commit['commit']['message'])
+        for userId in userIds:
+            if(userId == commitAuthorId):
+                messages.append(commit['commit']['message'])
     return messages
 
 def getIdsInMessage(msg):
@@ -106,7 +113,7 @@ def filterMessages(messages):
             continue
 
 def testGetCommitMessageInRepoForUser(token):
-    messages = getCommitMessageInRepoForUser("https://api.github.com/repos/elastic/elasticsearch/commits", "master", 40268737)
+    messages = getCommitMessageInRepoForUsers("https://api.github.com/repos/elastic/elasticsearch/commits", "master", [40268737])
     filterMessages(messages)
     for msg in messages:
         print("----------------")
@@ -114,29 +121,27 @@ def testGetCommitMessageInRepoForUser(token):
         ids = getIdsInMessage(msg)
         print(ids)
         for id in ids:
-            issue = sendRequest("https://api.github.com/repos/elastic/elasticsearch/issues/"+id)
+            issue = sendRequest("https://api.github.com/repos/elastic/elasticsearch/issues/"+id).json()
             print(issue['body'])
             idsInIssue = getIdsInMessage(issue['body'])
             for idInIssue in idsInIssue:
-                issue = sendRequest("https://api.github.com/repos/elastic/elasticsearch/issues/"+idInIssue)
+                issue = sendRequest("https://api.github.com/repos/elastic/elasticsearch/issues/"+idInIssue).json()
                 print(issue['body'])
         print("----------------")
 
 
+testGetCommitMessageInRepoForUser(token)
+
 #repos = getBestJavaRepositories()
 repos = []
-ids = getIdsInMessage("#18 sdsdsdsd #10 asd gh-4 GH-20")
-testGetCommitMessageInRepoForUser(token)
-print(ids)
 sum = 0
 for repo in repos:
     if(commit_count(repo['commits_url'][:-6], repo['default_branch'], token) > 5000):
         print("--> " + repo['full_name'])
-        contribtors = sendRequest(repo['contributors_url'])
-        for contributor in contribtors:
-            contributorId = contributor['id']
-            getCommitMessageInRepoForUser(
-                repo['commits_url'][:-6], repo['default_branch'], contributorId)
+        contribtors = sendRequest(repo['contributors_url']).json()
+
+        contributorIds = [contributor['id'] for contributor in contribtors]
+        getCommitMessageInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], contributorIds)
         sum = sum + 1
     else:
         print(repo['full_name'])
