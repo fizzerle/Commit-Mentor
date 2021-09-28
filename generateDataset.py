@@ -91,7 +91,7 @@ def getCommitMessageInRepoForUsers(repoUrl, branch, userIds):
     return messages
 
 def getIdsInMessage(msg):
-    # automatic linking of commits
+    # automatic linking of commits 
     # https://docs.github.com/en/github/writing-on-github/working-with-advanced-formatting/autolinked-references-and-urls#issues-and-pull-requests
     r = re.compile(r'#([0-9]+)|\bgh-([0-9]+)\b', flags=re.I)
     ids = []
