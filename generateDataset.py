@@ -81,6 +81,9 @@ def sendRequest(url,header = None, perPage = 1,page = 1, numberOfValues = None, 
             'Content-Type': 'application/json',
             'Authorization': f'token {token}',
         }
+
+    if numberOfValues:
+        perPage = 100
     if(not '?' in url):
         params = {
             'per_page': perPage,
@@ -89,6 +92,7 @@ def sendRequest(url,header = None, perPage = 1,page = 1, numberOfValues = None, 
     
     if additionalParamKey:
         params[additionalParamKey] = additionalParamValue
+
 
     logging.debug("sending request: "+ url + str(params) + str(headers))
 
@@ -118,7 +122,7 @@ def sendRequest(url,header = None, perPage = 1,page = 1, numberOfValues = None, 
             resp.extend(r.json())
             count += 1
 
-    logging.trace("response: "+ pformat(resp))
+    logging.trace("response: "+ pformat(resp,width = 180,compact = True))
 
     return resp
 
@@ -146,10 +150,12 @@ def commit_count(url, sha):
     return commit_count
 
 
-def getCommitInRepoForUsers(repoUrl, branch, userIds,usernames = None):
+def getCommitInRepoForUsers(repoUrl, branch, userIds,usernames = None, numberOfCommits = None):
     logging.info("Getting Commit Message In "+ repoUrl +" for Users " + str(userIds))
-
-    commits = sendRequest(repoUrl,additionalParamKey = 'sha', additionalParamValue = branch,getAll = True)
+    if numberOfCommits:
+        commits = sendRequest(repoUrl,additionalParamKey = 'sha', additionalParamValue = branch,numberOfValues = numberOfCommits)
+    else:
+        commits = sendRequest(repoUrl,additionalParamKey = 'sha', additionalParamValue = branch,getAll = True)
 
     logging.info(str(len(commits)) + ' Commits fetched')
     filterCommits = []
@@ -268,7 +274,7 @@ def resolveIssueIdsInCommitMessage(repo,commits):
             commit['related'].append(issueClean)
 
 
-def analyzeRepo(repo,num_contributors):
+def analyzeRepo(repo,num_contributors,num_commits):
     f = open(repo['full_name']+".txt", "w", encoding='utf-8')
     contribtors = sendRequest(repo['contributors_url'],perPage = num_contributors)
     names = []
@@ -283,19 +289,19 @@ def analyzeRepo(repo,num_contributors):
             ids.append(contributor['id'])
     
     logging.info("Contributors are " + str(names))
-    commits = getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], ids,names)
+    commits = getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], ids,names,num_commits)
     filterMessages(commits)
     resolveIssueIdsInCommitMessage(repo,commits)
-    f.write(pformat(commits))
+    f.write(pformat(commits,width = 180,compact = True))
     f.close
 
 
-#repoName = "fizzerle/TISSFeedbacktool"
+repoName = "fizzerle/TISSFeedbacktool"
 #repoName = "airbnb/lottie-android"
-repoName = "elastic/elasticsearch"
+#repoName = "elastic/elasticsearch"
 
 testRepo = {'full_name': repoName.replace('/','-'), 'contributors_url' :'https://api.github.com/repos/'+repoName+'/contributors', 'commits_url': 'https://api.github.com/repos/'+repoName+'/commits{/sha}', 'default_branch': 'master', 'issues_url': 'https://api.github.com/repos/'+repoName+'/issues{/number}'}
-analyzeRepo(testRepo,5)
+analyzeRepo(testRepo,10,100)
 
 #repos = getBestJavaRepositories()
 repos = []
