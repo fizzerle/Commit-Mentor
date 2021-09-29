@@ -68,18 +68,7 @@ logging.basicConfig()
 # that do not set a less verbose level.
 logging.root.setLevel(logging.INFO)
 
-# search commits with certain text
 token = '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'
-owner = "MartinHeinz"
-repo = "python-project-blueprint"
-query_url = f"https://api.github.com/search/commits"
-params = {
-    'q': 'fix',
-    'per_page': 1,
-}
-headers = {'Authorization': f'token {token}',
-           "Accept": "application/vnd.github.cloak-preview+json"}
-#r = requests.get(query_url, headers=headers, params=params)
 
 def sendRequest(url,header = None, perPage = 1,page = 1, numberOfValues = None, additionalParamKey = None, additionalParamValue = None, getAll = False):
     params={}
@@ -101,7 +90,7 @@ def sendRequest(url,header = None, perPage = 1,page = 1, numberOfValues = None, 
     if additionalParamKey:
         params[additionalParamKey] = additionalParamValue
 
-    logging.info("sending request: "+ url + str(params) + str(headers))
+    logging.debug("sending request: "+ url + str(params) + str(headers))
 
     r = requests.request('GET', url, params=params, headers=headers)
     if (r.status_code != 200):
@@ -209,7 +198,6 @@ def isAscii(s):
     return all(ord(c) < 128 for c in s)
 
 def filterMessages(commits):
-
     f = open("filteredMessages.txt", "w")
     stats = {'all': len(commits), 'empty': 0, 'merge':0, 'nonASCII': 0, 'rollback': 0, 'bot': 0, 'good': 0}
     remove = False
@@ -243,7 +231,7 @@ def filterMessages(commits):
         else:
             stats['good'] += 1
 
-    logging.info(pformat(stats))
+    logging.info(stats)
     f.close()
 
 def removeNewlines(s):
@@ -309,16 +297,17 @@ analyzeRepo(testRepo,1)
 
 #repos = getBestJavaRepositories()
 repos = []
-sum = 0
+selectedReposCount = 0
+commitThreshold = 5000
 for repo in repos:
-    if(commit_count(repo['commits_url'][:-6], repo['default_branch']) > 5000):
+    if(commit_count(repo['commits_url'][:-6], repo['default_branch']) > commitThreshold):
         logging.info("[x]" + repo['full_name'])
         contribtors = sendRequest(repo['contributors_url'])
 
         contributorIds = [contributor['id'] for contributor in contribtors]
         getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], contributorIds)
-        sum = sum + 1
+        selectedReposCount += 1
     else:
         logging.info("[ ]" + repo['full_name'])
 
-logging.info("Repositories selected " + str(sum)+"/"+str(len(repos)))
+logging.info("Repositories selected " + str(selectedReposCount)+"/"+str(len(repos))+" with Threshold " + str(commitThreshold))
