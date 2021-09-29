@@ -98,7 +98,7 @@ def sendRequest(url,header = None, perPage = 1,page = 1, numberOfValues = None, 
 
     r = requests.request('GET', url, params=params, headers=headers)
     if (r.status_code != 200):
-        raise Exception(f'invalid github response: {r.content}')
+        raise Exception(f'invalid github response: {r.status_code} {r.content}')
 
     pagesCount = 0
     resp = r.json()
@@ -155,10 +155,11 @@ def getCommitInRepoForUsers(repoUrl, branch, userIds,usernames = None, numberOfC
     if numberOfCommits:
         commits = sendRequest(repoUrl,additionalParamKey = 'sha', additionalParamValue = branch,numberOfValues = numberOfCommits)
     else:
-        commits = sendRequest(repoUrl,additionalParamKey = 'sha', additionalParamValue = branch,getAll = True)
+        commits = sendRequest(repoUrl,getAll = True)
 
     logging.info(str(len(commits)) + ' Commits fetched')
     filterCommits = []
+    #filterCommits = [{'sha': commit['sha'], 'message': commit['commit']['message'].replace('\n',' ').replace('\r', ''), 'html_url': commit['html_url'] } for commit in commits]
     for commit in commits:
         if commit['author']:
             commitAuthorId = commit['author']['id']
@@ -207,6 +208,7 @@ def filterMessages(commits):
     f = open("filteredMessages.txt", "w", encoding='utf-8')
     stats = {'all': len(commits), 'empty': 0, 'merge':0, 'nonASCII': 0, 'rollback': 0, 'bot': 0, 'good': 0}
     remove = False
+    filteredCommits = []
     for commit in commits:
         remove = False
         msg = commit['message']
@@ -214,10 +216,10 @@ def filterMessages(commits):
         if not msg:
             remove = True
             stats['empty'] += 1
-        if msg.startswith('merge'):
+        if re.match('^merge', msg, re.I):
             remove = True
             stats['merge'] += 1
-        if msg.startswith('rollback') or msg.startswith('revert'):
+        if re.match('^rollback|^revert', msg, re.I):
             remove = True
             stats['rollback'] += 1
         if not isAscii(msg):
@@ -227,18 +229,22 @@ def filterMessages(commits):
         if(re.search(r'^ignore	update	\'	.*	\.',msg) or
         re.search(r'^update(d)? (changelog|gitignore|readme( . md| file)?)( \.)?',msg) or
         re.search(r'^prepare version (v)?[ \d.]+',msg) or
-        re.search(r'^bump (up )?version( number| code)?( to (v)?[ \d.]+( - snapshot)?)?( \.)?',msg) or
+        re.search(r'^bump ',msg) or
         re.search(r'^modify	(dockerfile|makefile)( \.)?',msg) or
-        re.search(r'^update submodule(s)?( \.)?',msg)):
+        re.search(r'^update submodule(s)?( \.)?',msg) or
+        re.search(r'bot',msg)):
+
             remove = True
             stats['bot'] += 1
         if remove:
             f.write("---------\n"+"message: "+msg+"\nsha: "+commit['sha']+"\n")
         else:
+            filteredCommits.append(commit)
             stats['good'] += 1
 
     logging.info(stats)
     f.close()
+    return filteredCommits
 
 def removeNewlines(s):
     return s.replace("\n", " ").replace("\r", " ")
@@ -274,7 +280,7 @@ def resolveIssueIdsInCommitMessage(repo,commits):
             commit['related'].append(issueClean)
 
 
-def analyzeRepo(repo,num_contributors,num_commits):
+def analyzeRepo(repo,num_contributors,num_commits = None):
     f = open(repo['full_name']+".txt", "w", encoding='utf-8')
     contribtors = sendRequest(repo['contributors_url'],perPage = num_contributors)
     names = []
@@ -290,18 +296,19 @@ def analyzeRepo(repo,num_contributors,num_commits):
     
     logging.info("Contributors are " + str(names))
     commits = getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], ids,names,num_commits)
-    filterMessages(commits)
-    resolveIssueIdsInCommitMessage(repo,commits)
-    f.write(pformat(commits,width = 180,compact = True))
+    filteredCommits = filterMessages(commits)
+    #resolveIssueIdsInCommitMessage(repo,filteredCommits)
+    f.write(pformat(filteredCommits,width = 180,compact = True))
     f.close
 
 
-repoName = "fizzerle/TISSFeedbacktool"
+#repoName = "fizzerle/TISSFeedbacktool"
 #repoName = "airbnb/lottie-android"
-#repoName = "elastic/elasticsearch"
+repoName = "elastic/elasticsearch"
+repoName = "ReactiveX/RxJava"
 
-testRepo = {'full_name': repoName.replace('/','-'), 'contributors_url' :'https://api.github.com/repos/'+repoName+'/contributors', 'commits_url': 'https://api.github.com/repos/'+repoName+'/commits{/sha}', 'default_branch': 'master', 'issues_url': 'https://api.github.com/repos/'+repoName+'/issues{/number}'}
-analyzeRepo(testRepo,10,100)
+testRepo = {'full_name': repoName.replace('/','-'), 'contributors_url' :'https://api.github.com/repos/'+repoName+'/contributors', 'commits_url': 'https://api.github.com/repos/'+repoName+'/commits{/sha}', 'default_branch': 'main', 'issues_url': 'https://api.github.com/repos/'+repoName+'/issues{/number}'}
+analyzeRepo(testRepo,10)
 
 #repos = getBestJavaRepositories()
 repos = []
