@@ -134,7 +134,7 @@ def commit_count(url, sha):
     return commit_count
 
 
-def getCommitMessageInRepoForUsers(repoUrl, branch, userIds,usernames = None):
+def getCommitInRepoForUsers(repoUrl, branch, userIds,usernames = None):
     logging.info("Getting Commit Message In "+ repoUrl +" for Users " + str(userIds))
     params = {
         'sha': branch,
@@ -164,24 +164,34 @@ def getCommitMessageInRepoForUsers(repoUrl, branch, userIds,usernames = None):
         resp.extend(r.json())
         count = count + 1
 
-    messages = []
-    printed = False
     logging.info(str(len(resp)) + ' Commits fetched')
+    commits = []
     for commit in resp:
         if commit['author']:
             commitAuthorId = commit['author']['id']
+            noUser = True
             for userId in userIds:
                 if(userId == commitAuthorId):
-                    messages.append(commit['commit']['message'])
+                    commitMessage = commit['commit']['message'].replace('\n',' ').replace('\r', '')
+                    commits.append({'sha': commit['sha'], 'message': commitMessage, 'html_url': commit['html_url'] })
+                    noUser = False
+                
+            if noUser:
+                logging.trace(pformat(commit)) 
         elif commit['commit']:
             commiterName= commit['commit']['committer']['name']
+            noUser = True
             for name in usernames:
-
                 if(name == commiterName):
-                    messages.append(commit['commit']['message'])
+                    noUser = False
+                    commitMessage = commit['commit']['message'].replace('\n',' ').replace('\r', '')
+                    commits.append({'sha': commit['sha'], 'message': commitMessage, 'html_url': commit['html_url'] })
+            
+            if noUser:
+                logging.trace(pformat(commit))
 
-    logging.info(str(len(messages)) + ' Commits assigned')
-    return messages
+    logging.info(str(len(commits)) + ' Commits assigned')
+    return commits
 
 def getIdsInMessage(msg):
     # automatic linking of commits 
@@ -200,46 +210,46 @@ def getIdsInMessage(msg):
 def isAscii(s):
     return all(ord(c) < 128 for c in s)
 
-def filterMessages(messages):
+def filterMessages(commits):
 
     f = open("filteredMessages.txt", "w")
-    stats = {'all': len(messages), 'empty': 0, 'merge':0, 'nonASCII': 0, 'rollback': 0, 'bot': 0, 'good': 0}
+    stats = {'all': len(commits), 'empty': 0, 'merge':0, 'nonASCII': 0, 'rollback': 0, 'bot': 0, 'good': 0}
     remove = False
-    for msg in messages:
+    for commit in commits:
         remove = False
+        msg = commit['message']
         #check if commit is empty
         if not msg:
             remove = True
-            stats['empty'] = stats['empty'] + 1
+            stats['empty'] += 1
         if msg.startswith('merge'):
             remove = True
-            stats['merge'] = stats['merge'] + 1
-        if msg.startswith('rollback'):
+            stats['merge'] += 1
+        if msg.startswith('rollback') or msg.startswith('revert'):
             remove = True
-            stats['rollback'] = stats['rollback'] + 1
+            stats['rollback'] += 1
         if not isAscii(msg):
             remove = True
-            stats['nonASCII'] = stats['nonASCII'] + 1
+            stats['nonASCII'] += 1
         #bot message
-        if(re.search(r'^ignore	update	\'	.*	\.$',msg) or
-        re.search(r'^update(d)? (changelog|gitignore|readme( . md| file)?)( \.)?$',msg) or
-        re.search(r'^prepare version (v)?[ \d.]+$',msg) or
-        re.search(r'^bump (up )?version( number| code)?( to (v)?[ \d.]+( - snapshot)?)?( \.)?$',msg) or
-        re.search(r'^modify	(dockerfile|makefile)( \.)?$',msg) or
-        re.search(r'^update submodule(s)?( \.)?$',msg)):
+        if(re.search(r'^ignore	update	\'	.*	\.',msg) or
+        re.search(r'^update(d)? (changelog|gitignore|readme( . md| file)?)( \.)?',msg) or
+        re.search(r'^prepare version (v)?[ \d.]+',msg) or
+        re.search(r'^bump (up )?version( number| code)?( to (v)?[ \d.]+( - snapshot)?)?( \.)?',msg) or
+        re.search(r'^modify	(dockerfile|makefile)( \.)?',msg) or
+        re.search(r'^update submodule(s)?( \.)?',msg)):
             remove = True
-            stats['bot'] = stats['bot'] + 1
+            stats['bot'] += 1
         if remove:
-            f.write(msg+"\n")
+            f.write("---------\n"+"message: "+msg+"\nsha: "+commit['sha']+"\nurl: "+commit['html_url']+"\n")
         else:
-            f.write(msg+"\n")
-            stats['good'] = stats['good'] + 1
+            stats['good'] += 1
 
     logging.info(pformat(stats))
     f.close()
 
 def testGetCommitMessageInRepoForUser(token):
-    messages = getCommitMessageInRepoForUsers("https://api.github.com/repos/elastic/elasticsearch/commits", "master", [14179713])
+    messages = getCommitInRepoForUsers("https://api.github.com/repos/elastic/elasticsearch/commits", "master", [14179713])
     filterMessages(messages)
     for msg in messages:
         ids = getIdsInMessage(msg)
@@ -250,7 +260,7 @@ def testGetCommitMessageInRepoForUser(token):
                 issue = sendRequest("https://api.github.com/repos/elastic/elasticsearch/issues/"+idInIssue).json()
 
 def testGetCommitMessageInRepoForUserSmallRepository(token):
-    messages = getCommitMessageInRepoForUsers("https://api.github.com/repos/fizzerle/feedbacktool/commits", "master", [14179713])
+    messages = getCommitInRepoForUsers("https://api.github.com/repos/fizzerle/feedbacktool/commits", "master", [14179713])
     filterMessages(messages)
     for msg in messages:
         ids = getIdsInMessage(msg)
@@ -261,7 +271,7 @@ def testGetCommitMessageInRepoForUserSmallRepository(token):
                 issue = sendRequest("https://api.github.com/repos/fizzerle/feedbacktool/issues/"+idInIssue).json()
 
 def testGetCommitMessageInRepoForUserMediumRepository(token):
-    contribtors = sendRequest("https://api.github.com/repos/airbnb/lottie-android/contributors",perPage = 100).json()
+    contribtors = sendRequest("https://api.github.com/repos/airbnb/lottie-android/contributors",perPage = 10).json()
     names = []
     ids = []
     logging.info("There are " + str(len(contribtors)) + " Contributors")
@@ -274,8 +284,8 @@ def testGetCommitMessageInRepoForUserMediumRepository(token):
             ids.append(contributor['id'])
     
     logging.info("Contributors are " + str(names))
-    messages = getCommitMessageInRepoForUsers("https://api.github.com/repos/airbnb/lottie-android/commits", "master", ids,names)
-    filterMessages(messages)
+    commits = getCommitInRepoForUsers("https://api.github.com/repos/airbnb/lottie-android/commits", "master", ids,names)
+    filterMessages(commits)
 #    for msg in messages:
 #        ids = getIdsInMessage(msg)
 #        for id in ids:
@@ -296,7 +306,7 @@ for repo in repos:
         contribtors = sendRequest(repo['contributors_url']).json()
 
         contributorIds = [contributor['id'] for contributor in contribtors]
-        getCommitMessageInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], contributorIds)
+        getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], contributorIds)
         sum = sum + 1
     else:
         logging.info("[ ]" + repo['full_name'])
