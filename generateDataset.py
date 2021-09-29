@@ -198,7 +198,7 @@ def isAscii(s):
     return all(ord(c) < 128 for c in s)
 
 def filterMessages(commits):
-    f = open("filteredMessages.txt", "w")
+    f = open("filteredMessages.txt", "w", encoding='utf-8')
     stats = {'all': len(commits), 'empty': 0, 'merge':0, 'nonASCII': 0, 'rollback': 0, 'bot': 0, 'good': 0}
     remove = False
     for commit in commits:
@@ -269,7 +269,7 @@ def resolveIssueIdsInCommitMessage(repo,commits):
 
 
 def analyzeRepo(repo,num_contributors):
-    f = open(repo['full_name']+".txt", "w")
+    f = open(repo['full_name']+".txt", "w", encoding='utf-8')
     contribtors = sendRequest(repo['contributors_url'],perPage = num_contributors)
     names = []
     ids = []
@@ -290,10 +290,12 @@ def analyzeRepo(repo,num_contributors):
     f.close
 
 
-repoName = "fizzerle/TISSFeedbacktool"
+#repoName = "fizzerle/TISSFeedbacktool"
 #repoName = "airbnb/lottie-android"
+repoName = "elastic/elasticsearch"
+
 testRepo = {'full_name': repoName.replace('/','-'), 'contributors_url' :'https://api.github.com/repos/'+repoName+'/contributors', 'commits_url': 'https://api.github.com/repos/'+repoName+'/commits{/sha}', 'default_branch': 'master', 'issues_url': 'https://api.github.com/repos/'+repoName+'/issues{/number}'}
-analyzeRepo(testRepo,1)
+analyzeRepo(testRepo,5)
 
 #repos = getBestJavaRepositories()
 repos = []
