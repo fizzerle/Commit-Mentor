@@ -4,6 +4,8 @@ import urllib
 import re
 import logging
 from pprint import pformat
+import math
+import json
 
 # Adding log level trace: https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility/13638084#13638084
 def addLoggingLevel(levelName, levelNum, methodName=None):
@@ -79,35 +81,60 @@ headers = {'Authorization': f'token {token}',
            "Accept": "application/vnd.github.cloak-preview+json"}
 #r = requests.get(query_url, headers=headers, params=params)
 
-def sendRequest(url,params = None,header = None, perPage = 1,page = 1):
+def sendRequest(url,header = None, perPage = 1,page = 1, numberOfValues = None, additionalParamKey = None, additionalParamValue = None, getAll = False):
+    params={}
+    if getAll:
+        perPage = 100
+        page = 1
     if(header == None):
         headers = {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'Authorization': f'token {token}',
         }
-    if(params == None and not '?' in url):
+    if(not '?' in url):
         params = {
             'per_page': perPage,
             'page': page,
         }
-    logging.trace("sending request: "+ url + str(params) + str(headers))
+    
+    if additionalParamKey:
+        params[additionalParamKey] = additionalParamValue
 
-    resp = requests.request('GET', url, params=params, headers=headers)
-    if (resp.status_code != 200):
-        raise Exception(f'invalid github response: {resp.content}')
+    logging.info("sending request: "+ url + str(params) + str(headers))
 
-    logging.trace("response: "+ pformat(resp.json()))
+    r = requests.request('GET', url, params=params, headers=headers)
+    if (r.status_code != 200):
+        raise Exception(f'invalid github response: {r.content}')
+
+    pagesCount = 0
+    resp = r.json()
+    last_page = r.links.get('last')
+
+    if last_page:
+        # extract the query string from the last page url
+        qs = urllib.parse.urlparse(last_page['url']).query
+        # extract the page number from the query string
+        url = urllib.parse
+        pagesCount = int(dict(urllib.parse.parse_qsl(qs))['page'])
+
+    if numberOfValues or getAll:
+        pagesNeeded = 0
+        if numberOfValues:
+            pagesNeeded = math.ceil(numberOfValues/perPage)
+        count = 2
+        while 'next' in r.links.keys() and (count <= pagesNeeded or getAll):
+            logging.info("Fetching Page " +  str(count) + "/" + str(pagesCount))
+            r = requests.request('GET', r.links['next']['url'], headers=headers)
+            resp.extend(r.json())
+            count += 1
+
+    logging.trace("response: "+ pformat(resp))
+
     return resp
 
-def getBestJavaRepositories():
-    params = {
-        'q': 'stars:>10000 language:Java',
-        'per_page': 6,
-        'page': 1,
-    }
-    r = sendRequest("https://api.github.com/search/repositories",params = params).json()
-
+def getRepositories(stars,language,number):
+    r = sendRequest("https://api.github.com/search/repositories",numberOfValues = number, additionalParamKey = 'q', additionalParamValue = 'stars:>{stars} language:{language}', perPage = 100)
     return r['items']
 
 
@@ -115,11 +142,7 @@ def commit_count(url, sha):
     """
     Return the number of commits to a project
     """
-    params = {
-        'sha': sha,
-        'per_page': 1,
-    }
-    resp = sendRequest(url,params).json()
+    resp = sendRequest(url,additionalParamKey='sha', additionalParamValue = sha)
     # check the resp count, just in case there are 0 commits
     commit_count = len(resp)
     last_page = resp.links.get('last')
@@ -136,44 +159,19 @@ def commit_count(url, sha):
 
 def getCommitInRepoForUsers(repoUrl, branch, userIds,usernames = None):
     logging.info("Getting Commit Message In "+ repoUrl +" for Users " + str(userIds))
-    params = {
-        'sha': branch,
-        'per_page': 100,
-        'page': 1,
-    }
 
-    r = sendRequest(repoUrl,params)
+    commits = sendRequest(repoUrl,additionalParamKey = 'sha', additionalParamValue = branch,getAll = True)
 
-    pagesCount = 0
-    last_page = r.links.get('last')
-    #pprint(resp.json())
-    # if there are no more pages, the count must be 0 or 1
-    if last_page:
-        # extract the query string from the last page url
-        qs = urllib.parse.urlparse(last_page['url']).query
-        # extract the page number from the query string
-        url = urllib.parse
-        pagesCount = int(dict(urllib.parse.parse_qsl(qs))['page'])
-
-    resp = r.json()
-    count = 1
-    while 'next' in r.links.keys():
-        query = urllib.parse.urlparse(r.links['next']['url']).query
-        logging.info("Fetching Commits Page " +  str(count) + "/" + str(pagesCount))
-        r=sendRequest(r.links['next']['url'])
-        resp.extend(r.json())
-        count = count + 1
-
-    logging.info(str(len(resp)) + ' Commits fetched')
-    commits = []
-    for commit in resp:
+    logging.info(str(len(commits)) + ' Commits fetched')
+    filterCommits = []
+    for commit in commits:
         if commit['author']:
             commitAuthorId = commit['author']['id']
             noUser = True
             for userId in userIds:
                 if(userId == commitAuthorId):
                     commitMessage = commit['commit']['message'].replace('\n',' ').replace('\r', '')
-                    commits.append({'sha': commit['sha'], 'message': commitMessage, 'html_url': commit['html_url'] })
+                    filterCommits.append({'sha': commit['sha'], 'message': commitMessage})
                     noUser = False
                 
             if noUser:
@@ -185,13 +183,13 @@ def getCommitInRepoForUsers(repoUrl, branch, userIds,usernames = None):
                 if(name == commiterName):
                     noUser = False
                     commitMessage = commit['commit']['message'].replace('\n',' ').replace('\r', '')
-                    commits.append({'sha': commit['sha'], 'message': commitMessage, 'html_url': commit['html_url'] })
+                    filterCommits.append({'sha': commit['sha'], 'message': commitMessage, 'html_url': commit['html_url'] })
             
             if noUser:
                 logging.trace(pformat(commit))
 
-    logging.info(str(len(commits)) + ' Commits assigned')
-    return commits
+    logging.info(str(len(filterCommits)) + ' Commits assigned')
+    return filterCommits
 
 def getIdsInMessage(msg):
     # automatic linking of commits 
@@ -241,42 +239,55 @@ def filterMessages(commits):
             remove = True
             stats['bot'] += 1
         if remove:
-            f.write("---------\n"+"message: "+msg+"\nsha: "+commit['sha']+"\nurl: "+commit['html_url']+"\n")
+            f.write("---------\n"+"message: "+msg+"\nsha: "+commit['sha']+"\n")
         else:
             stats['good'] += 1
 
     logging.info(pformat(stats))
     f.close()
 
-def testGetCommitMessageInRepoForUser(token):
-    messages = getCommitInRepoForUsers("https://api.github.com/repos/elastic/elasticsearch/commits", "master", [14179713])
-    filterMessages(messages)
-    for msg in messages:
-        ids = getIdsInMessage(msg)
-        for id in ids:
-            issue = sendRequest("https://api.github.com/repos/elastic/elasticsearch/issues/"+id).json()
-            idsInIssue = getIdsInMessage(issue['body'])
-            for idInIssue in idsInIssue:
-                issue = sendRequest("https://api.github.com/repos/elastic/elasticsearch/issues/"+idInIssue).json()
+def removeNewlines(s):
+    return s.replace("\n", " ").replace("\r", " ")
 
-def testGetCommitMessageInRepoForUserSmallRepository(token):
-    messages = getCommitInRepoForUsers("https://api.github.com/repos/fizzerle/feedbacktool/commits", "master", [14179713])
-    filterMessages(messages)
-    for msg in messages:
-        ids = getIdsInMessage(msg)
+def resolveIssueIdsInCommitMessage(repo,commits):
+    for idx,commit in enumerate(commits):
+        ids = getIdsInMessage(commit['message'])
+        if ids:
+            commit['related'] = []
+        logging.info("Resolving Issues of Commit #"+ str(idx))
         for id in ids:
-            issue = sendRequest("https://api.github.com/repos/fizzerle/feedbacktool/issues/"+id).json()
-            idsInIssue = getIdsInMessage(issue['body'])
-            for idInIssue in idsInIssue:
-                issue = sendRequest("https://api.github.com/repos/fizzerle/feedbacktool/issues/"+idInIssue).json()
+            issueClean = {'id':id}
+            issue = sendRequest(repo['issues_url'][:-9]+"/"+id)
+            idsInIssue = []
+            if(issue['body']):
+                issueClean['body'] = removeNewlines(issue['body'])
+                idsInIssue = getIdsInMessage(issue['body'])
+            
+            issueClean['title'] = removeNewlines(issue['title'])
 
-def testGetCommitMessageInRepoForUserMediumRepository(token):
-    contribtors = sendRequest("https://api.github.com/repos/airbnb/lottie-android/contributors",perPage = 10).json()
+            if idsInIssue:
+                issueClean['mentionedInIssue'] = []
+            for idInIssue in idsInIssue:
+                issueCleanInner = {'id':idInIssue}
+                issue = sendRequest(repo['issues_url'][:-9]+"/"+id)
+                
+                issueCleanInner['title'] = removeNewlines(issue['title'])
+                if(issue['body']):
+                    issueCleanInner['body'] = removeNewlines(issue['body'])
+                
+                issueClean['mentionedInIssue'].append(issueCleanInner)
+
+            commit['related'].append(issueClean)
+
+
+def analyzeRepo(repo,num_contributors):
+    f = open(repo['full_name']+".txt", "w")
+    contribtors = sendRequest(repo['contributors_url'],perPage = num_contributors)
     names = []
     ids = []
     logging.info("There are " + str(len(contribtors)) + " Contributors")
     for contributor in contribtors:
-        name = sendRequest(contributor['url']).json()['name']
+        name = sendRequest(contributor['url'])['name']
         if name:
             names.append(name)
             ids.append(contributor['id'])
@@ -284,26 +295,25 @@ def testGetCommitMessageInRepoForUserMediumRepository(token):
             ids.append(contributor['id'])
     
     logging.info("Contributors are " + str(names))
-    commits = getCommitInRepoForUsers("https://api.github.com/repos/airbnb/lottie-android/commits", "master", ids,names)
+    commits = getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], ids,names)
     filterMessages(commits)
-#    for msg in messages:
-#        ids = getIdsInMessage(msg)
-#        for id in ids:
-#            issue = sendRequest("https://api.github.com/repos/airbnb/lottie-android/issues/"+id).json()
-#            idsInIssue = getIdsInMessage(issue['body'])
-#            for idInIssue in idsInIssue:
-#                issue = sendRequest("https://api.github.com/repos/airbnb/lottie-android/issues/"+idInIssue).json()
+    resolveIssueIdsInCommitMessage(repo,commits)
+    f.write(pformat(commits))
+    f.close
 
 
-testGetCommitMessageInRepoForUserMediumRepository(token)
+repoName = "fizzerle/TISSFeedbacktool"
+#repoName = "airbnb/lottie-android"
+testRepo = {'full_name': repoName.replace('/','-'), 'contributors_url' :'https://api.github.com/repos/'+repoName+'/contributors', 'commits_url': 'https://api.github.com/repos/'+repoName+'/commits{/sha}', 'default_branch': 'master', 'issues_url': 'https://api.github.com/repos/'+repoName+'/issues{/number}'}
+analyzeRepo(testRepo,1)
 
 #repos = getBestJavaRepositories()
 repos = []
 sum = 0
 for repo in repos:
-    if(commit_count(repo['commits_url'][:-6], repo['default_branch'], token) > 5000):
+    if(commit_count(repo['commits_url'][:-6], repo['default_branch']) > 5000):
         logging.info("[x]" + repo['full_name'])
-        contribtors = sendRequest(repo['contributors_url']).json()
+        contribtors = sendRequest(repo['contributors_url'])
 
         contributorIds = [contributor['id'] for contributor in contribtors]
         getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], contributorIds)
@@ -311,4 +321,4 @@ for repo in repos:
     else:
         logging.info("[ ]" + repo['full_name'])
 
-logging.info("Number of Repositories selected that get processed further " + str(sum)+"/"+str(len(repos)))
+logging.info("Repositories selected " + str(sum)+"/"+str(len(repos)))
