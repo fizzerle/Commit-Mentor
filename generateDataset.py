@@ -5,6 +5,7 @@ import re
 import logging
 from pprint import pformat
 import math
+import pickle
 import json
 
 # Adding log level trace: https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility/13638084#13638084
@@ -226,13 +227,13 @@ def filterMessages(commits):
             remove = True
             stats['nonASCII'] += 1
         #bot message
-        if(re.search(r'^ignore	update	\'	.*	\.',msg) or
-        re.search(r'^update(d)? (changelog|gitignore|readme( . md| file)?)( \.)?',msg) or
-        re.search(r'^prepare version (v)?[ \d.]+',msg) or
-        re.search(r'^bump ',msg) or
-        re.search(r'^modify	(dockerfile|makefile)( \.)?',msg) or
-        re.search(r'^update submodule(s)?( \.)?',msg) or
-        re.search(r'bot',msg)):
+        if(re.search(r'^ignore	update	\'	.*	\.',msg, re.I) or
+        re.search(r'^update(d)? (changelog|gitignore|readme( . md| file)?)( \.)?',msg, re.I) or
+        re.search(r'^prepare version (v)?[ \d.]+',msg, re.I) or
+        re.search(r'^bump ',msg, re.I) or
+        re.search(r'^modify	(dockerfile|makefile)( \.)?',msg, re.I) or
+        re.search(r'^update submodule(s)?( \.)?',msg, re.I) or
+        re.search(r'bot',msg, re.I)):
 
             remove = True
             stats['bot'] += 1
@@ -279,9 +280,39 @@ def resolveIssueIdsInCommitMessage(repo,commits):
 
             commit['related'].append(issueClean)
 
+def countHowManyCommitsToIssues(commits):
+    count = 0
+    for commit in commits:
+        ids = getIdsInMessage(commit['message'])
+        if len(ids) != 0:
+            count += 1
+    logging.info("From "+ str(commits)+ "commits, "+str(count)+" have a linked issue ")
+
+def letters_same(a,b):
+    if(len(a) > len(b)):
+        return sum ( a[i] == b[i] for i in range(len(b)) )
+    else:
+        return sum ( a[i] == b[i] for i in range(len(a)) )
+
+def loadCommitsAndAnalzeHowManyMessagesAreSimilarForRepo(testRepo):
+    commits = pickle.load(open(testRepo['full_name']+'_pickle'+".txt", "rb"))
+    simmilar = []
+    for idx,commit in enumerate(commits):
+        print(idx)
+        if len(commit['message']) > 50:
+            continue
+        for j in range(idx+1,len(commits)):
+                same = letters_same(commit['message'],commits[j]['message'])
+                if(same > 15):
+                    simmilar.append([commit['message'],commits[j]['message']])
+
+    f = open(testRepo['full_name']+".txt", "w", encoding='utf-8')
+    f.write(pformat(simmilar,width = 180,compact = True))
+    f.close
 
 def analyzeRepo(repo,num_contributors,num_commits = None):
-    f = open(repo['full_name']+".txt", "w", encoding='utf-8')
+    allCommitsFile = open(repo['full_name']+".txt", "w", encoding='utf-8')
+    pickleFile = open(repo['full_name']+'_pickle'+".txt", "wb")
     contribtors = sendRequest(repo['contributors_url'],perPage = num_contributors)
     names = []
     ids = []
@@ -298,8 +329,10 @@ def analyzeRepo(repo,num_contributors,num_commits = None):
     commits = getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], ids,names,num_commits)
     filteredCommits = filterMessages(commits)
     #resolveIssueIdsInCommitMessage(repo,filteredCommits)
-    f.write(pformat(filteredCommits,width = 180,compact = True))
-    f.close
+    pickle.dump(filteredCommits,pickleFile)
+    allCommitsFile.write(pformat(filteredCommits,width = 180))
+    allCommitsFile.close
+    pickleFile.close
 
 
 #repoName = "fizzerle/TISSFeedbacktool"
