@@ -1,0 +1,8 @@
+repos:
+-   repo: local
+    hooks:
+    -   id: some_test
+        name: run flask
+        entry: flask run
+        always_run: true
+        language: system
