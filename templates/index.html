@@ -1,0 +1,22 @@
+<!-- CSS -->
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
+
+<!-- Javascripts -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html.min.js"></script>
+<script>
+
+document.addEventListener('DOMContentLoaded', () => {
+    {% autoescape false %}
+    var diffHtml = Diff2Html.html(`{{ commitDiff }}`, {
+      drawFileList: true,
+      matching: 'lines',
+      outputFormat: 'line-by-line',
+    });
+    {% endautoescape %}
+    document.getElementById('git-diff').innerHTML = diffHtml;
+  });
+</script>
+<!--script src="{{url_for('static', filename='showDiff.js')}}"></script-->
+<h1>Semi Automatic Commit Generation Tool</h1>
+<div id= "git-diff"></div>
+<p><a href=# id=calculate>calculate server side</a>
