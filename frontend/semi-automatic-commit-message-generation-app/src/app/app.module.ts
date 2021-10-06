@@ -7,7 +7,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { GitDiffComponent } from './git-diff/git-diff.component';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ConventionalCommitFormComponent } from './conventional-commit-form/conventional-commit-form.component';
-import {FormsModule} from "@angular/forms";
+import {FormsModule, ReactiveFormsModule} from "@angular/forms";
 import {MatCardModule} from "@angular/material/card";
 import {MatGridList, MatGridListModule} from "@angular/material/grid-list";
 import {MatCheckboxModule} from "@angular/material/checkbox";
@@ -17,6 +17,8 @@ import {MatInputModule} from "@angular/material/input";
 import {MatOptionModule} from "@angular/material/core";
 import {MatStepper, MatStepperModule} from "@angular/material/stepper";
 import {MatButtonModule} from "@angular/material/button";
+import {MatExpansionModule} from "@angular/material/expansion";
+import {MatProgressBarModule} from "@angular/material/progress-bar";
 
 @NgModule({
   declarations: [
@@ -30,6 +32,7 @@ import {MatButtonModule} from "@angular/material/button";
     BrowserAnimationsModule,
     MatToolbarModule,
     FormsModule,
+    ReactiveFormsModule,
     MatCardModule,
     MatCheckboxModule,
     MatGridListModule,
@@ -38,7 +41,9 @@ import {MatButtonModule} from "@angular/material/button";
     MatInputModule,
     MatOptionModule,
     MatStepperModule,
-    MatButtonModule
+    MatButtonModule,
+    MatExpansionModule,
+    MatProgressBarModule
   ],
   providers: [],
   bootstrap: [AppComponent]
