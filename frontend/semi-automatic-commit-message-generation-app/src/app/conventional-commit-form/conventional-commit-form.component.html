@@ -2,19 +2,19 @@
 
   <p>
     <mat-form-field appearance="outline">
-      <mat-label>Short Description</mat-label>
-      <input matInput type="text"  class="form-control"
-             [(ngModel)]="model.short_description" name="short_description">
-    </mat-form-field>
-  </p>
-  <p>
-    <mat-form-field appearance="outline">
       <mat-label>Type</mat-label>
       <mat-select
         required
         [(ngModel)]="model.footer" name="type">
         <mat-option *ngFor="let type of commitTypes" [value]="type">{{type}}</mat-option>
       </mat-select>
+    </mat-form-field>
+  </p>
+  <p>
+    <mat-form-field  appearance="outline">
+      <mat-label>Short Description</mat-label>
+      <input matInput type="text"  class="form-control"
+             [(ngModel)]="model.short_description" name="short_description">
     </mat-form-field>
   </p>
   <p>
