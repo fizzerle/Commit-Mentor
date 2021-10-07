@@ -1,5 +1,3 @@
-# main.py
-
 from fastapi import FastAPI
 import pygit2
 from typing import List
@@ -9,10 +7,10 @@ app = FastAPI()
 @app.get("/getDiff")
 async def getDiff():
     repo=pygit2.Repository(r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
-    diff = repo.diff('HEAD', cached=True).patch
+    diff = repo.diff('HEAD', cached=False).patch
     return diff
 
-@app.get("/getQuestions/")
+@app.get("/getQuestions")
 async def getQuestions(type: type = None, issues: List[int] = None):
     needWhyQuestions = True
     if issues:
@@ -26,7 +24,7 @@ async def getQuestions(type: type = None, issues: List[int] = None):
     repo.index.write_tree()
 
     # How many Files changed in the Diff
-    diff = repo.diff('HEAD', cached=True)
+    diff = repo.diff('HEAD', cached=False)
     print(diff.stats.files_changed)
     # number of patches is normaly the same as number of files, i think there is a difference when the files do not contain changes that are diffable
     # then there is maybe no patch
@@ -34,14 +32,25 @@ async def getQuestions(type: type = None, issues: List[int] = None):
     # a patch contains hunks, these hunks are the areas in the file that have changes
 
     print(firstPatch.text)
+    questions = []
+    content = ""
     for diffPatch in diff:
         print(diffPatch.line_stats)
         print("Patch has "+ str(len(diffPatch.hunks)) + " hunks")
+        for hunk in diffPatch.hunks:
+            questions.append(hunk)
         #print(diffPatch.hunks[0].header)
-        #for line in diffPatch.hunks[0].lines:
-        #    print(line.content)
+        print(diffPatch.delta.new_file.path)
+        print(diffPatch.delta.old_file.path)
+        content += diffPatch.hunks[0].header+" "
+        for line in diffPatch.hunks[0].lines:
+            content += line.content + " "
+    nextHunk = {"question" :"What is this hunk about?",
+            "file" :  0,
+            "hunk" : 0,
+            }
     
     # TODO: pre-process the diff by extracting program symbols
     # TODO: call the hunk ranker model
 
-    return "diff"
+    return nextHunk
