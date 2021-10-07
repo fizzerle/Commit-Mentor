@@ -33,6 +33,17 @@
         <p>
           <mat-checkbox [(ngModel)]="model.breakingChanges" name="breaking Change">Breaking Change</mat-checkbox>
         </p>
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              Diff of commit
+            </mat-panel-title>
+            <mat-panel-description>
+              Click to see the full div of the commit
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+          <div [innerHtml]="outputHtml"></div>
+        </mat-expansion-panel>
       </form>
       <div>
         <button mat-raised-button matStepperNext>Next</button>
