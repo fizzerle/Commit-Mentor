@@ -19,6 +19,8 @@ import {MatStepper, MatStepperModule} from "@angular/material/stepper";
 import {MatButtonModule} from "@angular/material/button";
 import {MatExpansionModule} from "@angular/material/expansion";
 import {MatProgressBarModule} from "@angular/material/progress-bar";
+import {HttpClientModule} from "@angular/common/http";
+import {ApiService} from "./services/api.service";
 
 @NgModule({
   declarations: [
@@ -29,6 +31,7 @@ import {MatProgressBarModule} from "@angular/material/progress-bar";
   imports: [
     BrowserModule,
     AppRoutingModule,
+    HttpClientModule,
     BrowserAnimationsModule,
     MatToolbarModule,
     FormsModule,
@@ -45,7 +48,7 @@ import {MatProgressBarModule} from "@angular/material/progress-bar";
     MatExpansionModule,
     MatProgressBarModule
   ],
-  providers: [],
+  providers: [ApiService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
