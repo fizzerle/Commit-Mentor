@@ -307,7 +307,7 @@ def loadCommitsAndAnalzeHowManyMessagesAreSimilarForRepo(testRepo):
                     simmilar.append([commit['message'],commits[j]['message']])
 
     f = open(testRepo['full_name']+".txt", "w", encoding='utf-8')
-    f.write(pformat(simmilar,width = 180,compact = True))
+    f.write(pformat(simmilar,width = 180))
     f.close
 
 def analyzeRepo(repo,num_contributors,num_commits = None):
