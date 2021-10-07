@@ -1,6 +1,4 @@
-
-
-  <mat-stepper [linear]=true (selectionChange)="selectionChange($event)" #stepper>
+ <mat-stepper [linear]=true (selectionChange)="selectionChange($event)" #stepper >
     <mat-step [stepControl]="commitForm.control">
       {{model | json}}
 
@@ -49,25 +47,14 @@
         <button mat-raised-button matStepperNext>Next</button>
       </div>
     </mat-step>
-    <mat-step label="Fill in Body">
-
+    <mat-step label="Fill In Body">
       <span>Quality of commit</span><mat-progress-bar mode="determinate" [value]="answeredQuestions" color="warn" [class.green-progress]="answeredQuestions/100 == 1">Test</mat-progress-bar>
       <form [formGroup]="userForm" (ngSubmit)="send(userForm.value)">
         <div *ngFor="let answer of getQuestionFormControls(); let i = index">
           <mat-card style="margin-top: 1rem">
-            <mat-card-header><mat-card-title> Why do added the Pselect function to zsyscall_linux_mipsle.go?</mat-card-title></mat-card-header>
+            <mat-card-header><mat-card-title> {{questionsForHunks[i]}}</mat-card-title></mat-card-header>
             <mat-card-content>
-              <mat-expansion-panel>
-                <mat-expansion-panel-header>
-                  <mat-panel-title>
-                    Diff for Pselect in zsyscall_linux_mipsle.go
-                  </mat-panel-title>
-                  <mat-panel-description>
-                    This is a summary of the content
-                  </mat-panel-description>
-                </mat-expansion-panel-header>
-                <div [innerHtml]="outputHtml"></div>
-              </mat-expansion-panel>
+              <div [innerHtml]="hunksForQuestions[i]"></div>
               <mat-form-field class="noPadding" appearance="outline" style="margin-top: 1rem">
                 <mat-label>Answer:</mat-label>
                 <textarea matInput type="text"  cdkTextareaAutosize #autosize="cdkTextareaAutosize"cdkAutosizeMinRows="1" cdkAutosizeMaxRows="5" class="form-control"
@@ -78,11 +65,11 @@
           </mat-card>
         </div>
         <br>
-        <button mat-raised-button="" (click)="addQuestion()">Load next Question</button>
+        <button mat-raised-button="" (click)="addQuestion()" [class.spinner]="loading" color="primary" [disabled]="loading">Load Next Question</button>
         <br>
         <div>
           <button mat-raised-button matStepperPrevious>Back</button>
-          <button mat-raised-button matStepperNext>All important questions asked</button>
+          <button mat-raised-button matStepperNext>All Important Questions Asked</button>
         </div>
       </form>
     </mat-step>
@@ -99,4 +86,3 @@
       </div>
     </mat-step>
   </mat-stepper>
-
