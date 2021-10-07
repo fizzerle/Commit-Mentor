@@ -19,6 +19,8 @@ async def getQuestions(type: type = None, issues: List[int] = None):
         needWhyQuestions = False
 
     repo=pygit2.Repository(r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
+
+    # check if this is needed to also add untracked files
     repo.index.add_all([r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code"])
     repo.index.write()
     repo.index.write_tree()
@@ -26,10 +28,10 @@ async def getQuestions(type: type = None, issues: List[int] = None):
     # How many Files changed in the Diff
     diff = repo.diff('HEAD', cached=True)
     print(diff.stats.files_changed)
-    #number of patches is normaly the same as number of files, i think there is a difference when the files do not contain changes that are diffable
-    #then there is maybe no patch
+    # number of patches is normaly the same as number of files, i think there is a difference when the files do not contain changes that are diffable
+    # then there is maybe no patch
     firstPatch = diff[0]
-    #a patch contains hunks, these hunks are the areas in the file that have changes
+    # a patch contains hunks, these hunks are the areas in the file that have changes
 
     print(firstPatch.text)
     for diffPatch in diff:
@@ -39,7 +41,7 @@ async def getQuestions(type: type = None, issues: List[int] = None):
         #for line in diffPatch.hunks[0].lines:
         #    print(line.content)
     
-    #TODO: pre-process the diff by extracting program symbols
-    #TODO: call the hunk ranker model
+    # TODO: pre-process the diff by extracting program symbols
+    # TODO: call the hunk ranker model
 
     return "diff"
