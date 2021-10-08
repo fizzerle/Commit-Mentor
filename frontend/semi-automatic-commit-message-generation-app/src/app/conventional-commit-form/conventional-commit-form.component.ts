@@ -1,11 +1,10 @@
-import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {Component, OnInit} from '@angular/core';
 import {Commit} from "../model/commit";
 import {Type} from "../model/type";
 import {StepperSelectionEvent} from "@angular/cdk/stepper";
 import * as Diff2Html from "diff2html";
-import {AbstractControl, FormArray, FormBuilder, FormControl, FormGroup} from "@angular/forms";
+import {FormArray, FormBuilder, FormControl, FormGroup} from "@angular/forms";
 import {ApiService} from "../services/api.service";
-import {Question} from "../model/question";
 
 @Component({
   selector: 'app-conventional-commit-form',
@@ -15,7 +14,6 @@ import {Question} from "../model/question";
 export class ConventionalCommitFormComponent implements OnInit {
   commitTypes: string[];
   commitMessage = "";
-  answer = "";
   private diff!: string;
   loading = false;
 
@@ -122,5 +120,9 @@ export class ConventionalCommitFormComponent implements OnInit {
       top: document.body.scrollHeight,
       behavior: 'smooth',
     })
+  }
+
+  commitCode() {
+    this.apiService.postCommit(this.commitMessage).subscribe()
   }
 }

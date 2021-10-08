@@ -21,6 +21,7 @@ import {MatExpansionModule} from "@angular/material/expansion";
 import {MatProgressBarModule} from "@angular/material/progress-bar";
 import {HttpClientModule} from "@angular/common/http";
 import {ApiService} from "./services/api.service";
+import {MatSnackBarModule} from "@angular/material/snack-bar";
 
 @NgModule({
   declarations: [
@@ -46,7 +47,8 @@ import {ApiService} from "./services/api.service";
     MatStepperModule,
     MatButtonModule,
     MatExpansionModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    MatSnackBarModule
   ],
   providers: [ApiService],
   bootstrap: [AppComponent]

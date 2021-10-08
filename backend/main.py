@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 import pygit2
 from typing import List
+from pydantic import BaseModel
 
 app = FastAPI()
+
+class Commit(BaseModel):
+    message: str
 
 @app.get("/getDiff")
 async def getDiff():
@@ -10,8 +14,24 @@ async def getDiff():
     diff = repo.diff('HEAD', cached=False).patch
     return diff
 
+@app.post("/commit")
+async def commitFiles(commit: Commit):
+    repo=pygit2.Repository(r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
+    repo.index.add_all()
+    repo.index.write()
+    tree = repo.index.write_tree()
+    parent, ref = repo.resolve_refish(refish=repo.head.name)
+    repo.create_commit(
+        ref.name,
+        repo.default_signature,
+        repo.default_signature,
+        commit.message,
+        tree,
+        [parent.oid],
+    )
+
 @app.get("/getQuestions")
-async def getQuestions(type: type = None, issues: List[int] = None):
+async def getQuestions(type:str = None, issues: List[int] = None):
     needWhyQuestions = True
     if issues:
         needWhyQuestions = False
