@@ -19,7 +19,6 @@ export class ConventionalCommitFormComponent implements OnInit {
 
   constructor(private fb: FormBuilder, private apiService:ApiService) {
     this.commitTypes =Object.values(Type);
-    this.init();
 
     this.userForm = this.fb.group({
       answers: this.fb.array([
@@ -76,6 +75,10 @@ export class ConventionalCommitFormComponent implements OnInit {
   addQuestion(): void {
     this.loading = true
     this.apiService.getQuestions().subscribe((question) => {
+      if(question.question === 'Finish'){
+        this.loading = false
+        stepper.next()
+      }
       this.questionsForHunks.push(question.question)
 
       var diffFile = Diff2Html.parse(this.diff);

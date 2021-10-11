@@ -46,8 +46,11 @@ async def getQuestions(type:str = None, issues: List[int] = None):
     # How many Files changed in the Diff
     diff = repo.diff('HEAD', cached=False)
     print(diff.stats.files_changed)
+    if(diff.stats.files_changed == 0):
+        return {"question" :"Finsih"}
     # number of patches is normaly the same as number of files, i think there is a difference when the files do not contain changes that are diffable
     # then there is maybe no patch
+
     firstPatch = diff[0]
     # a patch contains hunks, these hunks are the areas in the file that have changes
 
