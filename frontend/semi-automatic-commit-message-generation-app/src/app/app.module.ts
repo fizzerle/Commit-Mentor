@@ -22,6 +22,8 @@ import {MatProgressBarModule} from "@angular/material/progress-bar";
 import {HttpClientModule} from "@angular/common/http";
 import {ApiService} from "./services/api.service";
 import {MatSnackBarModule} from "@angular/material/snack-bar";
+import {MatTreeModule} from "@angular/material/tree";
+import {MatIconModule} from "@angular/material/icon";
 
 @NgModule({
   declarations: [
@@ -48,7 +50,9 @@ import {MatSnackBarModule} from "@angular/material/snack-bar";
     MatButtonModule,
     MatExpansionModule,
     MatProgressBarModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatTreeModule,
+    MatIconModule
   ],
   providers: [ApiService],
   bootstrap: [AppComponent]
