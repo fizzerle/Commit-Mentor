@@ -1,6 +1,5 @@
  <mat-stepper [linear]=true (selectionChange)="selectionChange($event)" #stepper >
     <mat-step [stepControl]="commitForm.control">
-      {{model | json}}
 
       <form (ngSubmit)="onSubmit()" #commitForm="ngForm">
         <ng-template matStepLabel>Basic Commit Information</ng-template>
