@@ -7,6 +7,14 @@ from pprint import pformat
 import math
 import pickle
 import json
+from unidiff import PatchSet
+from tree_sitter import Language, Parser
+import pygit2
+from pygit2 import clone_repository
+import shutil
+import os.path
+from os import path
+from unidiff import PatchSet
 
 # Adding log level trace: https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility/13638084#13638084
 def addLoggingLevel(levelName, levelNum, methodName=None):
@@ -150,7 +158,7 @@ def commit_count(url, sha):
         commit_count = int(dict(urllib.parse.parse_qsl(qs))['page'])
     return commit_count
 
-
+# Returns commits of a repository for a group of users
 def getCommitInRepoForUsers(repoUrl, branch, userIds,usernames = None, numberOfCommits = None):
     logging.info("Getting Commit Message In "+ repoUrl +" for Users " + str(userIds))
     if numberOfCommits:
@@ -206,6 +214,9 @@ def isAscii(s):
     return all(ord(c) < 128 for c in s)
 
 def filterMessages(commits):
+    """
+    Return ONLY commits that are not bot generated
+    """
     f = open("filteredMessages.txt", "w", encoding='utf-8')
     stats = {'all': len(commits), 'empty': 0, 'merge':0, 'nonASCII': 0, 'rollback': 0, 'bot': 0, 'good': 0}
     remove = False
@@ -298,7 +309,6 @@ def loadCommitsAndAnalzeHowManyMessagesAreSimilarForRepo(testRepo):
     commits = pickle.load(open(testRepo['full_name']+'_pickle'+".txt", "rb"))
     simmilar = []
     for idx,commit in enumerate(commits):
-        print(idx)
         if len(commit['message']) > 50:
             continue
         for j in range(idx+1,len(commits)):
@@ -310,9 +320,8 @@ def loadCommitsAndAnalzeHowManyMessagesAreSimilarForRepo(testRepo):
     f.write(pformat(simmilar,width = 180))
     f.close
 
+# returns the filtered commits of the most active contributors of a repository
 def analyzeRepo(repo,num_contributors,num_commits = None):
-    allCommitsFile = open(repo['full_name']+".txt", "w", encoding='utf-8')
-    pickleFile = open(repo['full_name']+'_pickle'+".txt", "wb")
     contribtors = sendRequest(repo['contributors_url'],perPage = num_contributors)
     names = []
     ids = []
@@ -329,33 +338,225 @@ def analyzeRepo(repo,num_contributors,num_commits = None):
     commits = getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], ids,names,num_commits)
     filteredCommits = filterMessages(commits)
     #resolveIssueIdsInCommitMessage(repo,filteredCommits)
-    pickle.dump(filteredCommits,pickleFile)
-    allCommitsFile.write(pformat(filteredCommits,width = 180))
-    allCommitsFile.close
+    return filteredCommits
+
+def findReposWithMoreCommitsThan(repos,commitThreshold = 5000):
+    selectedReposCount = 0
+    filterdRepos = []
+    for repo in repos:
+        if(commit_count(repo['commits_url'][:-6], repo['default_branch']) > commitThreshold):
+            logging.info("[x]" + repo['full_name'])
+            filterdRepos.append(repo)
+            selectedReposCount += 1
+        else:
+            repos.remove(repo['full_name'])
+            logging.info("[ ]" + repo['full_name'])
+    logging.info("Repositories selected " + str(selectedReposCount)+"/"+str(len(repos))+" with Threshold " + str(commitThreshold))
+    return filterdRepos
+
+# Returns all commits that contain program elements in commit messages
+
+# 1. Get the diffs of the commits
+# 2. Filter out Text Files
+# 3. Filter out comments
+# 4. split diff by whiteSpace
+# 5. Build bag of words of all splitted tokens
+# 6. Split commit message by whiteSpace
+# 7. Find intersection of the two sets
+#https://github.com/octocat/hello-world/commit/553c2077f0edc3d5dc5d17262f6aa498e69d6f8e.diff
+
+def findCommitsThatContainProgramElements(repo,commits):
+    filterdCommits = []
+    for idx,commit in enumerate(commits):
+        logging.info("Fetching Diff " + str(idx) + "/" + str(len(commits)))
+        diff = urllib.request.urlopen("https://github.com/" + repo['full_name'].replace('-','/') + "/commit/" + commit['sha']+'.diff')
+        encoding = diff.headers.get_charsets()[0]
+        patches = PatchSet(diff, encoding=encoding)
+
+        tokens = re.findall('[A-Za-z]+',str(patches))
+
+#        for idx, patch in enumerate(patches):
+ #           for idy, hunk in enumerate(patch):
+  #              for idz, line in enumerate(hunk):
+   #                 if idx == 0 and idy == 1:
+    #                    
+        commit['diff'] = str(patches)
+        # TODO: Filter text files?
+        # TODO: Filter comment lines?
+
+        splittedMessage = re.findall('[A-Za-z]+',commit['message'])
+        common_elements = list(set(tokens).intersection(set(splittedMessage)))
+        if(len(common_elements) > 0):
+            commit['common'] = common_elements
+            filterdCommits.append(commit)
+
+    logging.info("There are " + str(len(filterdCommits)) + "/" + str(len(commits)) + " commits with program elements" )
+    return filterdCommits
+
+def writeCommitsToPickleFile(filename, commits):
+    pickleFile = open(filename, "wb")
+    pickle.dump(commits,pickleFile)
     pickleFile.close
 
+def writeCommitsToFile(filename, commits):
+    allCommitsFile = open(filename, "w", encoding='utf-8')
+    allCommitsFile.write(pformat(commits,width = 180))
+    allCommitsFile.close
 
-#repoName = "fizzerle/TISSFeedbacktool"
-#repoName = "airbnb/lottie-android"
-repoName = "elastic/elasticsearch"
+def generateSyntaxtTree(sourceCode):
+    Language.build_library(
+    # Store the library in the `build` directory
+    'build/my-languages.so',
+    # Include one or more languages
+    [
+        './tree-sitter-java'
+    ]
+    )
+    JAVA_LANGUAGE = Language('build/my-languages.so', 'java')
+
+    parser = Parser()
+    parser.set_language(JAVA_LANGUAGE)
+
+    tree = parser.parse(sourceCode)
+    captures = getAllFunctions(JAVA_LANGUAGE, tree)
+    splittedSource = sourceCode.decode("utf-8").split('\n')
+
+    for cap in captures:
+        line = splittedSource[cap[0].start_point[0]]
+        #print(line)
+        #get function name
+        #print(line[cap[0].start_point[1]:cap[0].end_point[1]])
+    return tree
+
+def node_text(source, node):
+    return bytes(source, "utf8")[node.start_byte:node.end_byte].decode("utf-8")
+
+def findNodeTypeAtPosition(tree,line,start,end):
+    #logging.info("Finding Node Type")
+    currentNode = tree.root_node
+    parent = tree.root_node
+    while currentNode.start_point[0] != line and currentNode.end_point[0] != line:
+        if len(currentNode.children) == 0:
+            break
+        for childNode in currentNode.children:
+            if childNode.start_point[0] <= line and childNode.end_point[0] >= line:
+                parent = currentNode
+                currentNode = childNode
+                break
+
+    #print("Parent: " + parent.type)
+    #print("Child: " + currentNode.type)
+    #print(sourceCode[parent.start_point[0]:parent.end_point[0]])
+    #print(currentNode.type)
+    #print(parent.type)
+    #TODO: use other type. Parent is not always the best
+    return currentNode.type
+
+# https://medium.com/codist-ai/introducing-tree-hugger-source-code-mining-for-human-b5fcd31bef55
+# https://github.blog/2020-08-04-codegen-semantics-improved-language-support-system/
+# https://github.com/autosoft-dev/tree-hugger
+def getAllFunctions(language,tree):
+        query = language.query(
+            """
+            (method_declaration
+  name: (identifier) @function.method)
+            """
+        )
+        return query.captures(tree.root_node)
+
+def test():
+    #shutil.rmtree('./RxJava')
+    #repoName = "fizzerle/TISSFeedbacktool"
+    #repoName = "airbnb/lottie-android"
+    #repoName = "elastic/elasticsearch"
+    repoName = "ReactiveX/RxJava"
+
+    testRepo = {'full_name': repoName.replace('/','-'), 'contributors_url' :'https://api.github.com/repos/'+repoName+'/contributors', 'commits_url': 'https://api.github.com/repos/'+repoName+'/commits{/sha}', 'default_branch': '3.x', 'issues_url': 'https://api.github.com/repos/'+repoName+'/issues{/number}'}
+    #commits = [{'sha': '17e71ab4e6dc432ac536bf5bf193055b32b3fb17', 'message': 'adsfadf adfadfdf adfdfdd hallo assertValue assertErrorMessage asdfsdfdf'}]
+    filtered_commits = analyzeRepo(testRepo,2,20)
+    commitsWithProgramElemet = findCommitsThatContainProgramElements(testRepo,filtered_commits)
+    commits = analyzeRepo(testRepo,10,500)
+
+    #for commit in commitsWithProgramElemet:
+    #    generateSyntaxtTree(commit)
+
+    writeCommitsToFile(testRepo['full_name']+".txt",commitsWithProgramElemet)
+    writeCommitsToPickleFile(testRepo['full_name']+'_pickle'+".txt",commitsWithProgramElemet)
+
+    #repos = getBestJavaRepositories()
+    #filteredRepos = findReposWithMoreCommitsThan(repos,5000)
+
+
+def enrichCommitWithConcreteSyntaxTree(repo,commits):
+    logging.info("Enriching Commits with Syntax Tree Information")
+    repoName = repo['full_name'].split('-')[1]
+    repoNameFull = repoName.replace('-','/')
+    if not path.exists("./"+repoName):
+        repo_url = 'https://github.com/'+repoNameFull+'.git'
+        repo_path = './'+repoName
+        repo = clone_repository(repo_url, repo_path) # Clones a non-bare repository
+    repo = pygit2.Repository('./'+repoName)
+    for idx,commit in enumerate(commits):
+        logging.info("Enriching Commit %d", idx)
+        localCommit = repo.revparse_single(commit['sha'])
+        patches = PatchSet.from_string(commit['diff'])
+        commit['commonTypes'] = []
+        for patch in patches:
+            sourceCode = localCommit.tree[patch.path].read_raw()
+            if(not patch.path.endswith('.java')):
+                continue
+            #print(patch.path)
+            splittedSource = sourceCode.decode("utf-8").split('\n')
+            tree = generateSyntaxtTree(sourceCode)
+            for hunk in patch:
+                # handle mentioning of hunk header (method name) in commit message
+                for word in re.findall('[A-Za-z]+',hunk.section_header ):
+                    if word in commit['common']:
+                        for idx,line in enumerate(splittedSource):
+                            if idx > hunk.target_start:
+                                break
+                            wordPosition = line.find(word)
+                            if wordPosition != -1:
+                                nodeType = findNodeTypeAtPosition(tree,idx,wordPosition,wordPosition+len(word))
+                                commit['commonTypes'].append([nodeType,"header"])
+                #handle program elements hunk content
+                for line in hunk:
+                    for word in re.findall('[A-Za-z]+',line.value):
+                        if word in commit['common']:
+                            wordPosition = line.value.find(word)
+                            #TODO: build CST before the change
+                            if line.line_type == '+':
+                                nodeType = findNodeTypeAtPosition(tree,line.target_line_no-1,wordPosition,wordPosition+len(word))
+                                lineType = ''
+                                if line.line_type == ' ':
+                                    lineType = "context"
+                                elif line.line_type == '+':
+                                    lineType = "added"
+                                elif line.line_type == '-':
+                                    lineType = "deleted"
+                                commit['commonTypes'].append([nodeType,lineType])
+                            
+
+
+#get diff
+#diff('HEAD', 'HEAD^')
+#TODO Build a custom CST or mark some nodes as added or deleted. Maybe this is possible by altering the code of the tree sitter, by comparing the trees
+
+#TODO Filter out words that are in comments
+
 repoName = "ReactiveX/RxJava"
+testRepo = {'full_name': repoName.replace('/','-'), 'contributors_url' :'https://api.github.com/repos/'+repoName+'/contributors', 'commits_url': 'https://api.github.com/repos/'+repoName+'/commits{/sha}', 'default_branch': '3.x', 'issues_url': 'https://api.github.com/repos/'+repoName+'/issues{/number}'}
+commits = [{'sha': '17e71ab4e6dc432ac536bf5bf193055b32b3fb17', 'message': 'Updated assertValue and assertErrorMessage'}]
+#commits = [{'sha': '17e71ab4e6dc432ac536bf5bf193055b32b3fb17', 'message': 'Updated the error message in assertValue and assertErrorMessage to show the exptected value'}]
+diff = urllib.request.urlopen('https://github.com/ReactiveX/RxJava/commit/17e71ab4e6dc432ac536bf5bf193055b32b3fb17.diff')
+commits[0]['diff'] = diff.read()
+commits[0]['diff'] = commits[0]['diff'].decode('utf-8')
 
-testRepo = {'full_name': repoName.replace('/','-'), 'contributors_url' :'https://api.github.com/repos/'+repoName+'/contributors', 'commits_url': 'https://api.github.com/repos/'+repoName+'/commits{/sha}', 'default_branch': 'main', 'issues_url': 'https://api.github.com/repos/'+repoName+'/issues{/number}'}
-analyzeRepo(testRepo,10)
+filtered_commits = analyzeRepo(testRepo,2,100)
+commits = findCommitsThatContainProgramElements(testRepo, filtered_commits)
+enrichCommitWithConcreteSyntaxTree(testRepo,commits)
 
-#repos = getBestJavaRepositories()
-repos = []
-selectedReposCount = 0
-commitThreshold = 5000
-for repo in repos:
-    if(commit_count(repo['commits_url'][:-6], repo['default_branch']) > commitThreshold):
-        logging.info("[x]" + repo['full_name'])
-        contribtors = sendRequest(repo['contributors_url'])
+for commit in commits:
+    commit['diff'] = ''
 
-        contributorIds = [contributor['id'] for contributor in contribtors]
-        getCommitInRepoForUsers(repo['commits_url'][:-6], repo['default_branch'], contributorIds)
-        selectedReposCount += 1
-    else:
-        logging.info("[ ]" + repo['full_name'])
-
-logging.info("Repositories selected " + str(selectedReposCount)+"/"+str(len(repos))+" with Threshold " + str(commitThreshold))
+writeCommitsToFile(testRepo['full_name']+".txt",commits)
