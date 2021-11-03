@@ -3,14 +3,16 @@ import {Commit} from "../model/commit";
 import {Type} from "../model/type";
 import {StepperSelectionEvent} from "@angular/cdk/stepper";
 import * as Diff2Html from "diff2html";
-import {FormArray, FormBuilder, FormControl, FormGroup} from "@angular/forms";
+import {Form, FormArray, FormBuilder, FormControl, FormGroup} from "@angular/forms";
 import {ApiService} from "../services/api.service";
 import {MatStepper} from "@angular/material/stepper";
 import {trie, trie_node} from "../util/Trie";
 import {MatTreeNestedDataSource} from "@angular/material/tree";
 import {NestedTreeControl} from "@angular/cdk/tree";
-import {BehaviorSubject, Observable, of as observableOf} from 'rxjs';
+import {BehaviorSubject, Observable, of as observableOf, throwError} from 'rxjs';
 import {DiffFile} from "diff2html/lib/types";
+import {catchError} from "rxjs/operators";
+import {MatSnackBar} from "@angular/material/snack-bar";
 
 export class FileNode {
   children!: FileNode[];
@@ -26,7 +28,7 @@ export class FileNode {
 export class ConventionalCommitFormComponent implements OnInit {
   commitTypes: string[];
   commitMessage = "";
-  private diff!: string;
+  private diff!: any;
   loading = false;
   trie = new trie<string>()
 
@@ -34,7 +36,7 @@ export class ConventionalCommitFormComponent implements OnInit {
   nestedDataSource: MatTreeNestedDataSource<trie_node>;
   dataChange: BehaviorSubject<trie_node[]> = new BehaviorSubject<trie_node[]>([]);
 
-  constructor(private fb: FormBuilder, private apiService:ApiService) {
+  constructor(private fb: FormBuilder, private apiService:ApiService, private snackBar:MatSnackBar) {
     this.commitTypes =Object.values(Type);
 
     this.userForm = this.fb.group({
@@ -62,21 +64,67 @@ export class ConventionalCommitFormComponent implements OnInit {
 
   submitted = false;
 
+  oldFiles: string[] = []
+
   onSubmit() { this.submitted = true; }
 
   selectionChange(stepperEvent: StepperSelectionEvent){
+    if(stepperEvent.selectedIndex === 1) {
+      let filesToCommit: string[] = []
+      for(let node of this.fileNamesOfSelectedLeafNodes(this.trie.root)){
+        filesToCommit.push(this.getFullPath(node))
+      }
+      let missingFiles = this.oldFiles.filter(path => filesToCommit.indexOf(path) < 0);
+
+      console.log(missingFiles)
+      if(missingFiles.length > 0){
+        console.error("OH NO SOME FILES GOT REMOVED")
+        for (let file of missingFiles){
+          //does there exits a hunk for that file?
+          let indices = [], i;
+          for(i = 0; i < this.hunksForQuestions.length; i++){
+            if (this.hunksForQuestions[i][0].newName === file){
+              indices.push(i);
+            }
+          }
+          console.log(indices)
+          indices = indices.reverse()
+          for(let index of indices){
+            this.removeQuestion(index)
+          }
+        }
+      }
+      this.oldFiles = filesToCommit;
+      console.log(this.hunksForQuestions)
+      this.apiService.filesToCommit(filesToCommit).subscribe(() => {
+        if(this.hunksForQuestions.length == 0) this.addQuestion(undefined,false)
+      })
+      //focus introduces error message that field got change after check see https://github.com/angular/components/issues/12070
+      this.focus = false
+      this.delay(1000).then(() => {
+        this.focus = true
+      })
+    }
     if(stepperEvent.selectedIndex === 2){
       this.commitMessage = ""
       this.commitMessage += this.getEnumKeyByEnumValue(Type,this.model.type);
       if(this.model.scope) this.commitMessage += "("+ this.model.scope +")"
       this.commitMessage += ": "
-      this.commitMessage += this.model.short_description + "\n"
+      if(this.model.short_description) this.commitMessage += this.model.short_description + "\n"
+      else if(this.userForm.value.answers.length > 0 && this.userForm.value.answers[0] != null) this.commitMessage += this.userForm.value.answers[0] + "\n"
       if(this.model.body) this.commitMessage += this.model.body + "\n"
+
+      console.log(this.userForm.value.answers)
+      for(let answer of this.userForm.value.answers){
+          if(answer != null) this.commitMessage += "* " +answer + "\n"
+      }
+
       if(this.model.breakingChanges) this.commitMessage += "BREAKING CHANGE: "
       if(this.model.closesIssue) {
         this.commitMessage += "Closes "
         this.model.closesIssue.split(",").forEach((id) => this.commitMessage += "#"+id+" ")
       }
+
     }
   }
 
@@ -86,7 +134,7 @@ export class ConventionalCommitFormComponent implements OnInit {
   }
 
   outputHtml!: string;
-  private parsedDiff!: DiffFile[];
+  parsedDiff: DiffFile[] = [];
 
   init() {
 
@@ -105,6 +153,7 @@ export class ConventionalCommitFormComponent implements OnInit {
       // data Nodes have to be set manually, because of https://github.com/angular/components/issues/12170
       this.nestedTreeControl.dataNodes = [this.trie.root]
       this.nestedTreeControl.expandAll()
+      //this.checkAllChildren(this.trie.root, true)
     });
   }
 
@@ -143,35 +192,37 @@ export class ConventionalCommitFormComponent implements OnInit {
 
 
   userForm: FormGroup;
-  answeredQuestions: number = 10;
   questionsForHunks: string[] = [];
-  hunksForQuestions: string[] = [];
+  hunksForQuestions: [DiffFile,string][] = [];
   fileHtml: string = "";
+  public focus: boolean = true;
 
-  addQuestion(stepper: MatStepper): void {
+  addQuestion(stepper?: MatStepper,nextFile: boolean = false): void {
     this.loading = true
-    this.apiService.getQuestions().subscribe((question) => {
-      if(question.question === 'Finish'){
+    this.apiService.getQuestions(nextFile).pipe(catchError(() => {this.loading = false; return throwError("Request had a Error")} )).subscribe((question) => {
+
+      if(question.question == 'Finsih'){
         this.loading = false
-        stepper.next()
+        this.snackBar.open("All Questions answered","",{
+          duration: 3000
+        })
+        if(stepper) stepper.next()
+        return
       }
       this.questionsForHunks.push(question.question)
 
+      console.log(question)
+      console.log(Diff2Html.parse(this.diff))
       var diffFile = Diff2Html.parse(this.diff);
       diffFile = [diffFile[question.file]]
-      diffFile[question.file].blocks = [diffFile[question.file].blocks[question.hunk]]
-      let outputHtml = Diff2Html.html(diffFile,{ drawFileList: false, matching: 'lines' });
-      console.log(diffFile)
-      console.log(outputHtml)
-      this.hunksForQuestions.push(outputHtml);
+      diffFile[0].blocks = [diffFile[0].blocks[question.hunk]]
+      let outputHtml = Diff2Html.html(diffFile,{ drawFileList: false, matching: 'lines',outputFormat: 'side-by-side', });
+      this.hunksForQuestions.push([diffFile[0],outputHtml]);
       (this.userForm.get('answers') as FormArray).push(
         this.fb.control(null)
       );
-
-      // TODO: edit next line to really refelect how many questions of necessary ones are answered
-      this.answeredQuestions += 10
       this.delay(200).then(() => {
-        this.scrollToBottom()
+        this.focus = false
       })
       this.loading = false
     });
@@ -184,6 +235,9 @@ export class ConventionalCommitFormComponent implements OnInit {
 
   removeQuestion(index: number) {
     (this.userForm.get('answers') as FormArray).removeAt(index);
+    this.hunksForQuestions.forEach( (item, ind) => {
+      if(index === ind) this.hunksForQuestions.splice(index,1);
+    });
   }
 
   getQuestionFormControls(): FormControl[] {
@@ -201,8 +255,26 @@ export class ConventionalCommitFormComponent implements OnInit {
     })
   }
 
+  committing = false;
   commitCode() {
-    this.apiService.postCommit(this.commitMessage).subscribe()
+    this.committing = true
+    console.log("committing ", this.commitMessage)
+    this.apiService.postCommit(this.commitMessage).pipe(
+      catchError((err) => {
+        this.committing = false;
+        this.snackBar.open("Request had a Error," + err,"",{
+          duration: 2000
+        })
+        return throwError("Request had a Error" + err)
+    }))
+      .subscribe(() => {
+      this.snackBar.open("Congratulations! Your commit was successful! The page will reload now to prepare for your next commit.","",{
+        duration: 2000
+      })
+      this.delay(3000).then(() => {
+        window.location.reload()
+      })
+    })
   }
 
   fileClicked(node: trie_node) {
@@ -225,5 +297,20 @@ export class ConventionalCommitFormComponent implements OnInit {
       currentNode =  currentNode.parent
     }
     return path.slice(0,path.length -1)
+  }
+
+  fileNamesOfSelectedLeafNodes(node: trie_node): trie_node[]{
+    //console.log(node)
+    if(node.terminal && node.selected){
+      console.log(node.path)
+      return [node]
+    }
+
+    let childrenFiles: trie_node[] = []
+    for(const child of node.getChildren()){
+      childrenFiles = childrenFiles.concat(this.fileNamesOfSelectedLeafNodes(child))
+    }
+
+    return childrenFiles
   }
 }

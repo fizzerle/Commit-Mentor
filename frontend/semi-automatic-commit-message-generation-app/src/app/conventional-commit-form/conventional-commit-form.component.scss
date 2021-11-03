@@ -20,3 +20,7 @@ mat-form-field {
 li mat-checkbox {
   margin: 0.4rem;
 }
+
+::ng-deep .mat-horizontal-content-container {
+  overflow: visible !important;
+}

@@ -24,12 +24,14 @@ import {ApiService} from "./services/api.service";
 import {MatSnackBarModule} from "@angular/material/snack-bar";
 import {MatTreeModule} from "@angular/material/tree";
 import {MatIconModule} from "@angular/material/icon";
+import {FocusDirective} from "./conventional-commit-form/focus.directive";
 
 @NgModule({
   declarations: [
     AppComponent,
     GitDiffComponent,
-    ConventionalCommitFormComponent
+    ConventionalCommitFormComponent,
+    FocusDirective
   ],
   imports: [
     BrowserModule,

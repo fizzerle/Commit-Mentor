@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import {HttpClient, HttpErrorResponse} from '@angular/common/http';
+import {HttpClient, HttpErrorResponse, HttpParams} from '@angular/common/http';
 
 import { Observable, throwError } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators';
@@ -14,12 +14,21 @@ export class ApiService {
     return this.http.get<string>("/api/getDiff")
   }
 
-  getQuestions() {
-    return this.http.get<Question>("/api/getQuestions")
+  filesToCommit(files: string[]) {
+
+    return this.http.put<string>("/api/filesToCommit",{filesList: files})
+  }
+
+
+
+  getQuestions(nextFile:boolean) {
+    let params = new HttpParams().set("nextFile",nextFile); //Create new HttpParams
+
+    return this.http.get<Question>("/api/getQuestions",{params: params})
   }
 
   postCommit(commitMessage: string) {
-    return this.http.post("/api/commits",{ message: commitMessage },{ observe: 'response' }).pipe(
+    return this.http.post("/api/commit",{ message: commitMessage },{ observe: 'response' }).pipe(
       catchError(this.handleError)
     );
   }
