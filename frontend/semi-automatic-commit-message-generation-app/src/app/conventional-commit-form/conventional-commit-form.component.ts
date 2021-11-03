@@ -140,7 +140,7 @@ export class ConventionalCommitFormComponent implements OnInit {
 
     this.apiService.getGitDiff().subscribe((data) => {
       console.log(data)
-      if(data === null){
+      if(data === "null"){
         return
       }
       this.diff = data
