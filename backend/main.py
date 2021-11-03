@@ -48,9 +48,6 @@ def orderPatches(diff):
     openPatches = copy.deepcopy(orderedPatches)
     filesToCommit = copy.deepcopy(allFiles)
     print(orderedPatches)
-    print("Biggest File", orderedPatches[0][2])
-    print("Biggest File Index", orderedPatches[0][0])
-    print("Biggest Hunk Index", orderedPatches[0][1][0][0])
 
 # frontend remove the hunks to that files ==> alarm the user that questions that he already answered will be removed for that file
 
