@@ -176,7 +176,7 @@ def getCommitInRepoForUsers(repoUrl, branch, userIds,usernames = None, numberOfC
             for userId in userIds:
                 if(userId == commitAuthorId):
                     commitMessage = commit['commit']['message'].replace('\n',' ').replace('\r', '')
-                    filterCommits.append({'sha': commit['sha'], 'message': commitMessage})
+                    filterCommits.append({'sha': commit['sha'], 'message': commitMessage, 'url': commit['html_url']})
                     noUser = False
                 
             if noUser:
@@ -188,7 +188,7 @@ def getCommitInRepoForUsers(repoUrl, branch, userIds,usernames = None, numberOfC
                 if(name == commiterName):
                     noUser = False
                     commitMessage = commit['commit']['message'].replace('\n',' ').replace('\r', '')
-                    filterCommits.append({'sha': commit['sha'], 'message': commitMessage, 'html_url': commit['html_url'] })
+                    filterCommits.append({'sha': commit['sha'], 'message': commitMessage, 'url': commit['html_url'] })
             
             if noUser:
                 logging.trace(pformat(commit))
@@ -354,7 +354,20 @@ def findReposWithMoreCommitsThan(repos,commitThreshold = 5000):
     logging.info("Repositories selected " + str(selectedReposCount)+"/"+str(len(repos))+" with Threshold " + str(commitThreshold))
     return filterdRepos
 
-# Returns all commits that contain program elements in commit messages
+# This method is needed because normal intersection of sets is case sensitive
+def intersection(iterableA, iterableB, key=lambda x: x):
+    """Return the intersection of two iterables with respect to `key` function.
+
+    """
+    def unify(iterable):
+        d = {}
+        for item in iterable:
+            d.setdefault(key(item), []).append(item)
+        return d
+
+    A, B = unify(iterableA), unify(iterableB)
+
+    return [B[k][0] for k in A if k in B]
 
 # 1. Get the diffs of the commits
 # 2. Filter out Text Files
@@ -363,8 +376,8 @@ def findReposWithMoreCommitsThan(repos,commitThreshold = 5000):
 # 5. Build bag of words of all splitted tokens
 # 6. Split commit message by whiteSpace
 # 7. Find intersection of the two sets
-#https://github.com/octocat/hello-world/commit/553c2077f0edc3d5dc5d17262f6aa498e69d6f8e.diff
 
+# Returns all commits that contain program elements in commit messages
 def findCommitsThatContainProgramElements(repo,commits):
     filterdCommits = []
     for idx,commit in enumerate(commits):
@@ -373,19 +386,37 @@ def findCommitsThatContainProgramElements(repo,commits):
         encoding = diff.headers.get_charsets()[0]
         patches = PatchSet(diff, encoding=encoding)
 
-        tokens = re.findall('[A-Za-z]+',str(patches))
+        splitted = str(patches).split('\n')
 
-#        for idx, patch in enumerate(patches):
- #           for idy, hunk in enumerate(patch):
-  #              for idz, line in enumerate(hunk):
-   #                 if idx == 0 and idy == 1:
-    #                    
+        patchLines = ""
+
+        for patch in patches:
+            for hunk in patch:
+                commentStarted = False
+                #add section header to the lines, if it is no comment
+                strippedLine = hunk.section_header.strip()
+                if not strippedLine.startswith("//") and not strippedLine.startswith("*") and not strippedLine.startswith("/*") and not strippedLine.endswith("*/"):
+                        patchLines += strippedLine
+                for line in hunk:
+                    strippedLine = line.value.strip()
+                    if strippedLine.startswith("/*"):
+                        commentStarted = True
+                    if not strippedLine.startswith("//") and not strippedLine.startswith("*") and not commentStarted:
+                        patchLines += strippedLine
+                    if strippedLine.endswith("*/"):
+                        commentStarted = False
+              
+
+        tokens = re.findall('[A-Za-z]+',patchLines)
+          
         commit['diff'] = str(patches)
-        # TODO: Filter text files?
-        # TODO: Filter comment lines?
 
         splittedMessage = re.findall('[A-Za-z]+',commit['message'])
-        common_elements = list(set(tokens).intersection(set(splittedMessage)))
+
+        #filter out common stop words
+        splittedMessage = [ elem for elem in splittedMessage if len(elem) > 2 and elem not in ["the", "return", "for", "while","Function"]]
+
+        common_elements = intersection(set(tokens),set(splittedMessage), key=str.lower)
         if(len(common_elements) > 0):
             commit['common'] = common_elements
             filterdCommits.append(commit)
@@ -403,6 +434,7 @@ def writeCommitsToFile(filename, commits):
     allCommitsFile.write(pformat(commits,width = 180))
     allCommitsFile.close
 
+# generates the syntax tree for a java file
 def generateSyntaxtTree(sourceCode):
     Language.build_library(
     # Store the library in the `build` directory
@@ -435,7 +467,9 @@ def findNodeTypeAtPosition(tree,line,start,end):
     #logging.info("Finding Node Type")
     currentNode = tree.root_node
     parent = tree.root_node
+    counter = 0
     while currentNode.start_point[0] != line and currentNode.end_point[0] != line:
+        counter += 1
         if len(currentNode.children) == 0:
             break
         for childNode in currentNode.children:
@@ -443,13 +477,15 @@ def findNodeTypeAtPosition(tree,line,start,end):
                 parent = currentNode
                 currentNode = childNode
                 break
+        if counter > 200:
+            print("stopped")
+            break
 
     #print("Parent: " + parent.type)
     #print("Child: " + currentNode.type)
     #print(sourceCode[parent.start_point[0]:parent.end_point[0]])
     #print(currentNode.type)
     #print(parent.type)
-    #TODO: use other type. Parent is not always the best
     return currentNode.type
 
 # https://medium.com/codist-ai/introducing-tree-hugger-source-code-mining-for-human-b5fcd31bef55
@@ -464,6 +500,7 @@ def getAllFunctions(language,tree):
         )
         return query.captures(tree.root_node)
 
+# Method that is used to test the functionality
 def test():
     #shutil.rmtree('./RxJava')
     #repoName = "fizzerle/TISSFeedbacktool"
@@ -499,50 +536,74 @@ def enrichCommitWithConcreteSyntaxTree(repo,commits):
     for idx,commit in enumerate(commits):
         logging.info("Enriching Commit %d", idx)
         localCommit = repo.revparse_single(commit['sha'])
+        commitbeforeChange = repo.revparse_single(commit['sha']+"^")
         patches = PatchSet.from_string(commit['diff'])
         commit['commonTypes'] = []
-        for patch in patches:
-            sourceCode = localCommit.tree[patch.path].read_raw()
+        commit['hunks'] = set()
+        importantHunks = set()
+        commit['overAllPaches'] = len(patches)
+        overallHunks = 0
+        for patchId,patch in enumerate(patches):
             if(not patch.path.endswith('.java')):
                 continue
+            if patch.path in localCommit.tree:
+                sourceCode = localCommit.tree[patch.path].read_raw()
+
+            if patch.path in commitbeforeChange.tree:
+                sourceCodeBeforeCommit = commitbeforeChange.tree[patch.path].read_raw()
             #print(patch.path)
             splittedSource = sourceCode.decode("utf-8").split('\n')
             tree = generateSyntaxtTree(sourceCode)
-            for hunk in patch:
+            treeBeforeChange = generateSyntaxtTree(sourceCodeBeforeCommit)
+
+            for hunkId,hunk in enumerate(patch):
+                overallHunks += len(patch)
                 # handle mentioning of hunk header (method name) in commit message
-                for word in re.findall('[A-Za-z]+',hunk.section_header ):
-                    if word in commit['common']:
-                        for idx,line in enumerate(splittedSource):
-                            if idx > hunk.target_start:
-                                break
-                            wordPosition = line.find(word)
-                            if wordPosition != -1:
-                                nodeType = findNodeTypeAtPosition(tree,idx,wordPosition,wordPosition+len(word))
-                                commit['commonTypes'].append([nodeType,"header"])
+                strippedLine = hunk.section_header.strip()
+                if not strippedLine.startswith("//") and not strippedLine.startswith("*") and not strippedLine.startswith("/*") and not strippedLine.endswith("*/"):
+                    for word in re.findall('[A-Za-z]+',strippedLine):
+                        if word in commit['common']:
+                            #find the line of the hunk header in the file, because the line number of the diff header is not mentioned in the diff
+                            for idx,line in enumerate(splittedSource):
+                                if idx > hunk.target_start:
+                                    break
+                                if(line.strip().startswith(hunk.section_header.strip())):
+                                    wordPosition = line.find(word)
+                                    if wordPosition != -1:
+                                        nodeType = findNodeTypeAtPosition(tree,idx,wordPosition,wordPosition+len(word))
+                                        commit['hunks'].add(str(hunk))
+                                        commit['commonTypes'].append([nodeType,"diffHeader",strippedLine, str(patchId)+ " " + str(hunkId)])
                 #handle program elements hunk content
+                commentStarted = False
                 for line in hunk:
+                    strippedLine = line.value.strip()
+                    if strippedLine.startswith("/*"):
+                        commentStarted = True
+                    if strippedLine.startswith("//") or strippedLine.startswith("*") or commentStarted:
+                        if strippedLine.endswith("*/"):
+                            commentStarted = False
+                        continue
+
                     for word in re.findall('[A-Za-z]+',line.value):
                         if word in commit['common']:
                             wordPosition = line.value.find(word)
-                            #TODO: build CST before the change
-                            if line.line_type == '+':
+                            if line.line_type == '+' or line.line_type == ' ':
                                 nodeType = findNodeTypeAtPosition(tree,line.target_line_no-1,wordPosition,wordPosition+len(word))
-                                lineType = ''
-                                if line.line_type == ' ':
-                                    lineType = "context"
-                                elif line.line_type == '+':
-                                    lineType = "added"
-                                elif line.line_type == '-':
-                                    lineType = "deleted"
-                                commit['commonTypes'].append([nodeType,lineType])
-                            
-
-
-#get diff
-#diff('HEAD', 'HEAD^')
-#TODO Build a custom CST or mark some nodes as added or deleted. Maybe this is possible by altering the code of the tree sitter, by comparing the trees
-
-#TODO Filter out words that are in comments
+                            if line.line_type == '-':
+                                nodeType = findNodeTypeAtPosition(treeBeforeChange,line.source_line_no -1,wordPosition,wordPosition+len(word))
+                            lineType = ''
+                            if line.line_type == ' ':
+                                lineType = "context"
+                            elif line.line_type == '+':
+                                lineType = "added"
+                            elif line.line_type == '-':
+                                lineType = "deleted"
+                            commit['commonTypes'].append([nodeType,lineType, strippedLine, str(patchId)+ " " + str(hunkId)])
+                            commit['hunks'].add(str(hunk))
+                            importantHunks.add((patchId,hunkId))
+        commit['importantHunks'] = importantHunks
+        commit['numberImportantHunks'] = len(importantHunks)
+        commit['overAllHunks'] = overallHunks
 
 repoName = "ReactiveX/RxJava"
 testRepo = {'full_name': repoName.replace('/','-'), 'contributors_url' :'https://api.github.com/repos/'+repoName+'/contributors', 'commits_url': 'https://api.github.com/repos/'+repoName+'/commits{/sha}', 'default_branch': '3.x', 'issues_url': 'https://api.github.com/repos/'+repoName+'/issues{/number}'}
@@ -552,11 +613,9 @@ diff = urllib.request.urlopen('https://github.com/ReactiveX/RxJava/commit/17e71a
 commits[0]['diff'] = diff.read()
 commits[0]['diff'] = commits[0]['diff'].decode('utf-8')
 
-filtered_commits = analyzeRepo(testRepo,2,100)
+filtered_commits = analyzeRepo(testRepo,2,50)
 commits = findCommitsThatContainProgramElements(testRepo, filtered_commits)
 enrichCommitWithConcreteSyntaxTree(testRepo,commits)
 
-for commit in commits:
-    commit['diff'] = ''
 
 writeCommitsToFile(testRepo['full_name']+".txt",commits)
