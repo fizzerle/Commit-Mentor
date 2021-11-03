@@ -139,11 +139,10 @@ export class ConventionalCommitFormComponent implements OnInit {
   init() {
 
     this.apiService.getGitDiff().subscribe((data) => {
-      console.log(data)
-      if(data === "null"){
+      this.diff = data
+      if(data === null){
         return
       }
-      this.diff = data
       this.parsedDiff = Diff2Html.parse(data, { drawFileList: true, matching: 'lines' });
       let outputHtml = Diff2Html.html(this.parsedDiff, { drawFileList: true, matching: 'lines' });
       this.outputHtml = outputHtml;
