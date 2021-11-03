@@ -28,7 +28,7 @@ export class FileNode {
 export class ConventionalCommitFormComponent implements OnInit {
   commitTypes: string[];
   commitMessage = "";
-  private diff!: any;
+  diff!: any;
   loading = false;
   trie = new trie<string>()
 
@@ -139,6 +139,9 @@ export class ConventionalCommitFormComponent implements OnInit {
   init() {
 
     this.apiService.getGitDiff().subscribe((data) => {
+      if(data === null){
+        return
+      }
       this.diff = data
       this.parsedDiff = Diff2Html.parse(data, { drawFileList: true, matching: 'lines' });
       let outputHtml = Diff2Html.html(this.parsedDiff, { drawFileList: true, matching: 'lines' });
