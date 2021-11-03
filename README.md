@@ -9,3 +9,7 @@ To run the flask Server type in the CMD:
 To install the hook for automatic execution of the system:
     
     pre-commit install --hook-type prepare-commit-msg
+
+To run backed:
+
+    uvicorn main:app --reload
