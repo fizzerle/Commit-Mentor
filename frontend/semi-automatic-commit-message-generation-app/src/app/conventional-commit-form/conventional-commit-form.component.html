@@ -79,7 +79,7 @@
           <div [innerHtml]="outputHtml"></div>
         </mat-expansion-panel>
       </div>
-      <p *ngIf="diff === null">No file changes detected. Maybe you have selected the wrong git project</p>
+      <p *ngIf="diff === null"><b>No file changes detected. Maybe you have selected the wrong git project</b></p>
     </mat-step>
     <mat-step label="Fill In Body" style="overflow: visible">
       <form [formGroup]="userForm" (ngSubmit)="send(userForm.value)">
