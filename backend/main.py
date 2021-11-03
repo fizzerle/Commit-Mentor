@@ -2,22 +2,95 @@ from fastapi import FastAPI
 import pygit2
 from typing import List
 from pydantic import BaseModel
+import copy
 
+orderedPatches = []
+openPatches = []
+filesToCommit = []
 app = FastAPI()
 
 class Commit(BaseModel):
     message: str
 
+class Files(BaseModel):
+    filesList: List[str]
+
+#order patches and hunks by most changes
+def orderPatches(diff):
+    global orderedPatches
+    global openPatches
+    global filesToCommit
+    orderedPatches = []
+    filesToCommit = []
+    for idx, patch in enumerate(diff):
+        orderedPatches.append([idx,patch,[],patch.delta.new_file.path])
+    orderedPatches = sorted(orderedPatches, key=lambda tuple: tuple[1].line_stats[0]+tuple[1].line_stats[1]+tuple[1].line_stats[2],  reverse=True)
+
+    newOrderedPatches = []
+    for (oldId,patch,hunks,path) in orderedPatches:
+        filesToCommit.append(path)
+        for idx, hunk in enumerate(patch.hunks):
+            hunks.append((idx, len(hunk.lines)))
+        newOrderedPatches.append([oldId,hunks,path])
+    orderedPatches = newOrderedPatches
+
+    for patch in orderedPatches:
+        patch[1] = sorted(patch[1], key=lambda hunk: hunk[1],  reverse=True)
+
+    openPatches = copy.deepcopy(orderedPatches)
+    print(orderedPatches)
+    print("Biggest File",orderedPatches[0][2])
+    print("Biggest File Index",orderedPatches[0][0])
+    print("Biggest Hunk Index",orderedPatches[0][1][0][0])
+
+#frontend remove the hunks to that files ==> alarm the user that questions that he already answered will be removed for that file
+
+#updates the openHunks to reflect which files are selected by the user in the frontend 
+@app.put("/filesToCommit")
+async def filesToCom(filesSelectedByUser: Files):
+    global filesToCommit
+    global openPatches
+
+    print("files from frontend ",filesSelectedByUser.filesList)
+    print("files at backend ",filesToCommit)
+    files = filesSelectedByUser.filesList
+    addedFiles = []
+    deletedFiles = []
+
+    for path in files:
+        if path in filesToCommit:
+            filesToCommit.remove(path)
+        else:
+            addedFiles.append(path)
+    
+    deletedFiles = filesToCommit
+
+    print("added ",addedFiles)
+    print("delted ",deletedFiles)
+
+    openPatches = [(oldId,hunks,path) for (oldId,hunks,path) in openPatches if path not in deletedFiles]
+    print("open patches without deleted ",openPatches)
+    for idx, (oldId,hunks,path) in enumerate(orderedPatches):
+        if path in addedFiles:
+            openPatches.append((oldId,hunks,path))
+    
+    openPatches = sorted(openPatches, key=lambda patch: patch[1],  reverse=True)
+    print("new open patches", openPatches)
+    filesToCommit = files
+
 @app.get("/getDiff")
 async def getDiff():
     repo=pygit2.Repository(r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
-    diff = repo.diff('HEAD', cached=False).patch
-    return diff
+    diff = repo.diff('HEAD', cached=False)
+
+    orderPatches(diff)
+    return diff.patch
 
 @app.post("/commit")
 async def commitFiles(commit: Commit):
     repo=pygit2.Repository(r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
-    repo.index.add_all()
+    for path in filesToCommit:
+        repo.index.add(path)
     repo.index.write()
     tree = repo.index.write_tree()
     parent, ref = repo.resolve_refish(refish=repo.head.name)
@@ -31,10 +104,17 @@ async def commitFiles(commit: Commit):
     )
 
 @app.get("/getQuestions")
-async def getQuestions(type:str = None, issues: List[int] = None):
+async def getQuestions(type:str = None, issues: List[int] = None, nextFile: bool = False):
+    global openPatches
+
     needWhyQuestions = True
     if issues:
         needWhyQuestions = False
+
+    print(nextFile)
+    print(openPatches)
+    if nextFile or len(orderedPatches[0][1]) == 0:
+        del openPatches[0]
 
     repo=pygit2.Repository(r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
 
@@ -45,33 +125,25 @@ async def getQuestions(type:str = None, issues: List[int] = None):
 
     # How many Files changed in the Diff
     diff = repo.diff('HEAD', cached=False)
-    print(diff.stats.files_changed)
-    if(diff.stats.files_changed == 0):
+    if(diff.stats.files_changed == 0 or len(openPatches) == 0 or len(openPatches[0][1]) == 0):
         return {"question" :"Finsih"}
     # number of patches is normaly the same as number of files, i think there is a difference when the files do not contain changes that are diffable
     # then there is maybe no patch
 
-    firstPatch = diff[0]
     # a patch contains hunks, these hunks are the areas in the file that have changes
 
-    print(firstPatch.text)
-    questions = []
-    content = ""
     for diffPatch in diff:
         print(diffPatch.line_stats)
         print("Patch has "+ str(len(diffPatch.hunks)) + " hunks")
-        for hunk in diffPatch.hunks:
-            questions.append(hunk)
-        #print(diffPatch.hunks[0].header)
-        print(diffPatch.delta.new_file.path)
-        print(diffPatch.delta.old_file.path)
-        content += diffPatch.hunks[0].header+" "
-        for line in diffPatch.hunks[0].lines:
-            content += line.content + " "
-    nextHunk = {"question" :"What is this hunk about?",
-            "file" :  0,
-            "hunk" : 0,
+
+    print(openPatches)
+
+    nextHunk = {"question" :"This code part will",
+            "file" : openPatches[0][0],
+            "hunk" : openPatches[0][1][0][0],
             }
+
+    del openPatches[0][1][0]
     
     # TODO: pre-process the diff by extracting program symbols
     # TODO: call the hunk ranker model
