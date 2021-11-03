@@ -139,6 +139,7 @@ export class ConventionalCommitFormComponent implements OnInit {
   init() {
 
     this.apiService.getGitDiff().subscribe((data) => {
+      console.log(data)
       if(data === null){
         return
       }
