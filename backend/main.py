@@ -49,7 +49,7 @@ def orderPatches(diff):
 
 #frontend remove the hunks to that files ==> alarm the user that questions that he already answered will be removed for that file
 
-#updates the openHunks to reflect which files are selected by the user in the frontend 
+#updates the openHunks to reflect which files are selected by the user in the frontend
 @app.put("/filesToCommit")
 async def filesToCom(filesSelectedByUser: Files):
     global filesToCommit
@@ -66,7 +66,7 @@ async def filesToCom(filesSelectedByUser: Files):
             filesToCommit.remove(path)
         else:
             addedFiles.append(path)
-    
+
     deletedFiles = filesToCommit
 
     print("added ",addedFiles)
@@ -77,7 +77,7 @@ async def filesToCom(filesSelectedByUser: Files):
     for idx, (oldId,hunks,path) in enumerate(orderedPatches):
         if path in addedFiles:
             openPatches.append((oldId,hunks,path))
-    
+
     openPatches = sorted(openPatches, key=lambda patch: patch[1],  reverse=True)
     print("new open patches", openPatches)
     filesToCommit = files
@@ -163,7 +163,7 @@ async def getQuestions(type:str = None, issues: List[int] = None, nextFile: bool
             }
 
     del openPatches[0][1][0]
-    
+
     # TODO: pre-process the diff by extracting program symbols
     # TODO: call the hunk ranker model
 
