@@ -1,14 +1,23 @@
 from fastapi import FastAPI
 import pygit2
-from typing import List
+from typing import List,Dict,Tuple
 from pydantic import BaseModel
 import copy
+from unidiff import PatchSet
+import pkg_resources
+import os
+import subprocess
+import time
 
 orderedPatches = []
 openPatches = []
 filesToCommit = []
+files = []
 allFiles = []
 app = FastAPI()
+
+diff = None
+repo = None
 
 
 class Commit(BaseModel):
