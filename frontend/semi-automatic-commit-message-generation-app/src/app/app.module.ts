@@ -25,6 +25,8 @@ import {MatSnackBarModule} from "@angular/material/snack-bar";
 import {MatTreeModule} from "@angular/material/tree";
 import {MatIconModule} from "@angular/material/icon";
 import {FocusDirective} from "./conventional-commit-form/focus.directive";
+import {MatChipsModule} from "@angular/material/chips";
+import {MatProgressSpinnerModule} from "@angular/material/progress-spinner";
 
 @NgModule({
   declarations: [
