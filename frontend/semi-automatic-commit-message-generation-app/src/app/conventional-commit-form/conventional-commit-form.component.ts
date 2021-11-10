@@ -316,4 +316,68 @@ export class ConventionalCommitFormComponent implements OnInit {
 
     return childrenFiles
   }
+
+  commitMessageChanged() {
+    this.commitMessage = ""
+    this.commitMessage = ""+this.getEnumKeyByEnumValue(Type,this.model.type);
+    if(this.model.scope) this.commitMessage += "("+ this.model.scope +")"
+    if(this.model.breakingChanges) this.commitMessage += "!"
+    this.commitMessage += ": "
+    if(this.model.short_description) this.commitMessage += this.model.short_description + "\n"
+
+    if(this.model.body) this.commitMessage += this.model.body + "\n"
+    console.log(this.model.closesIssue)
+    if(this.model.closesIssue) {
+      this.commitMessage += "Closes "
+      this.model.closesIssue.split(",").forEach((id) => this.commitMessage += "#"+id+" ")
+    }
+  }
+
+  getTypeLength(modelType: Type|undefined): number {
+    let desc = this.getEnumKeyByEnumValue(Type,modelType)
+    if(desc === null) return 0
+    return desc.length
+  }
+
+  commitDescriptionLength(type: Type|undefined, scope: string|undefined, short_description: string|undefined, breaking_changes: boolean|undefined) {
+    let typeFull = this.getEnumKeyByEnumValue(Type,type)
+    let typeLength = 0
+    let scopeLength = 0
+    let decriptionLength = 0
+    let breakingLength =  breaking_changes === undefined || !breaking_changes? 0:1
+    if(typeFull !== null) typeLength = typeFull.length
+    if(scope !== undefined){
+      scopeLength = scope.length + (scope.length === 0? 0:2)
+    }
+    if(short_description !== undefined) decriptionLength = short_description.length
+
+    return (typeLength + 2) + breakingLength + scopeLength + decriptionLength
+  }
+
+  getCircleColorClass(char:any) {
+    let color = ""
+    if(char === 'M') color = "blue"
+    if(char === 'D') color =  "red"
+    if(char === 'N') color = "green"
+    return "roundCircle " + color
+  }
+
+  firstStepSubmit(stepper: MatStepper) {
+    if(this.fileNamesOfSelectedLeafNodes(this.trie.root).length === 0){
+      this.snackBar.open("Please select minimum one file to commit","",{
+        duration: 3000
+      })
+      return
+    }
+    console.log("submit first step2")
+    //skip hunk asking on certain commit types
+    if(this.model.type === Type.style){
+      this.snackBar.open("Skipping hunk question asking because of commit type","",{
+        duration: 3000
+      })
+      stepper.selectedIndex = 2
+      return
+    }
+    stepper.next()
+  }
 }
