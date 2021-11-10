@@ -107,17 +107,30 @@ export class ConventionalCommitFormComponent implements OnInit {
     }
     if(stepperEvent.selectedIndex === 2){
       this.commitMessage = ""
-      this.commitMessage += this.getEnumKeyByEnumValue(Type,this.model.type);
+      this.commitMessage = ""+this.getEnumKeyByEnumValue(Type,this.model.type);
       if(this.model.scope) this.commitMessage += "("+ this.model.scope +")"
       this.commitMessage += ": "
       if(this.model.short_description) this.commitMessage += this.model.short_description + "\n"
-      else if(this.userForm.value.answers.length > 0 && this.userForm.value.answers[0] != null) this.commitMessage += this.userForm.value.answers[0] + "\n"
-      if(this.model.body) this.commitMessage += this.model.body + "\n"
 
       console.log(this.userForm.value.answers)
+      let newAddedLines = ""
       for(let answer of this.userForm.value.answers){
-          if(answer != null) this.commitMessage += "* " +answer + "\n"
+        if(answer === null) continue
+        for(let answerLine of answer.split("\n")){
+          if(answerLine !== null || answerLine !== ""){
+            newAddedLines += "* " +answerLine + "\n"
+          }
+        }
       }
+
+      console.log("ADDED LINES",newAddedLines)
+      if(this.oldAutomaticAddedLines !== newAddedLines){
+        this.model.body += newAddedLines
+      }
+
+      this.oldAutomaticAddedLines = newAddedLines
+
+      if(this.model.body) this.commitMessage += this.model.body + "\n"
 
       if(this.model.breakingChanges) this.commitMessage += "BREAKING CHANGE: "
       if(this.model.closesIssue) {
