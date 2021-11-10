@@ -152,18 +152,19 @@ export class ConventionalCommitFormComponent implements OnInit {
   init() {
 
     this.apiService.getGitDiff().subscribe((data) => {
-      this.diff = data
-      if(data === null){
+      console.log(data)
+      this.diff = data.diff
+      if(data.diff === null){
         return
       }
-      this.parsedDiff = Diff2Html.parse(data, { drawFileList: true, matching: 'lines' });
+
+      this.parsedDiff = Diff2Html.parse(data.diff, { drawFileList: true, matching: 'lines' });
       let outputHtml = Diff2Html.html(this.parsedDiff, { drawFileList: true, matching: 'lines' });
       this.outputHtml = outputHtml;
       console.log(this.parsedDiff)
-      this.parsedDiff.forEach(diffFile => {
-        console.log(diffFile.newName)
-        this.trie.insert(diffFile.newName,diffFile.newName)
-      })
+      for (let path of data.files){
+        this.trie.insert(path[0],path[0],path[1])
+      }
       this.trie.root.path = "Commit All Files"
       this.dataChange.next([this.trie.root])
       // data Nodes have to be set manually, because of https://github.com/angular/components/issues/12170
