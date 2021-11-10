@@ -27,6 +27,18 @@ class Commit(BaseModel):
 class Files(BaseModel):
     filesList: List[str]
 
+class Hunk(BaseModel):
+    hunkNumber: int
+    answer: str
+class Patch(BaseModel):
+    filename: str
+    patchNumber: int
+    hunks: List[Hunk]
+class CommitToPublish(BaseModel):
+    message: str
+    patches: List[Patch]
+
+
 # order patches and hunks by most changes
 
 
