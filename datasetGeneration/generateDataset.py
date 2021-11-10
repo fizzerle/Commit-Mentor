@@ -14,7 +14,6 @@ from pygit2 import clone_repository
 import shutil
 import os.path
 from os import path
-from unidiff import PatchSet
 
 # Adding log level trace: https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility/13638084#13638084
 def addLoggingLevel(levelName, levelNum, methodName=None):
