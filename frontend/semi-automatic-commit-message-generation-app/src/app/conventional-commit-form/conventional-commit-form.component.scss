@@ -24,3 +24,22 @@ li mat-checkbox {
 ::ng-deep .mat-horizontal-content-container {
   overflow: visible !important;
 }
+
+.blue {
+  background-color: lightskyblue;
+}
+
+.green {
+  background-color: lightgreen;
+}
+
+.red {
+  background-color: lightcoral;
+}
+
+.roundCircle {
+  margin-left: 0.2rem; margin-right: 0.2rem; width: 0.6rem;height: 0.6rem; padding: 8px; border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center; color: white
+}
