@@ -277,10 +277,22 @@ export class ConventionalCommitFormComponent implements OnInit {
   }
 
   committing = false;
-  commitCode() {
+  commitCode(form: any) {
+    if(!form.valid) return
     this.committing = true
     console.log("committing ", this.commitMessage)
-    this.apiService.postCommit(this.commitMessage).pipe(
+    let patches: Patch[] = []
+    this.questionHunks.forEach((questionHunk, index) => {
+        let found = patches.find((patch) => {patch.patchNumber === questionHunk.fileNumber});
+        if(found){
+          found.hunks.push(new Hunk(questionHunk.hunkNumber,this.userForm.value.answers[index]?this.userForm.value.answers[index]:""))
+        }else {
+          patches.push(new Patch(questionHunk.fileNumber,questionHunk.filePath,[new Hunk(questionHunk.hunkNumber,this.userForm.value.answers[index]?this.userForm.value.answers[index]:"")]))
+        }
+    })
+
+    let commitToPublish = new CommitToPublish(this.commitMessage,patches)
+    this.apiService.postCommit(commitToPublish).pipe(
       catchError((err) => {
         this.committing = false;
         this.snackBar.open("Request had a Error," + err,"",{
