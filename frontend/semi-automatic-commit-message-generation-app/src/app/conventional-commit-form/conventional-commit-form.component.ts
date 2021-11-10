@@ -226,15 +226,19 @@ export class ConventionalCommitFormComponent implements OnInit {
         if(stepper) stepper.next()
         return
       }
-      this.questionsForHunks.push(question.question)
 
-      console.log(question)
-      console.log(Diff2Html.parse(this.diff))
+      this.openFiles = questionHunk.openFiles
+      this.openHunks = questionHunk.openHunks
+      this.allHunksForCurrentFile = questionHunk.allHunksForThisFile
+
+      console.log("Question Hunk",questionHunk)
+      console.log("Parsed diff",Diff2Html.parse(this.diff))
       var diffFile = Diff2Html.parse(this.diff);
-      diffFile = [diffFile[question.file]]
-      diffFile[0].blocks = [diffFile[0].blocks[question.hunk]]
+      diffFile = [diffFile[questionHunk.fileNumber]]
+      diffFile[0].blocks = [diffFile[0].blocks[questionHunk.hunkNumber]]
       let outputHtml = Diff2Html.html(diffFile,{ drawFileList: false, matching: 'lines',outputFormat: 'side-by-side', });
-      this.hunksForQuestions.push([diffFile[0],outputHtml]);
+      questionHunk.diff = outputHtml
+      this.questionHunks.push(questionHunk);
       (this.userForm.get('answers') as FormArray).push(
         this.fb.control(null)
       );
