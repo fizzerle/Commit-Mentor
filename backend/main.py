@@ -89,90 +89,209 @@ async def filesToCom(filesSelectedByUser: Files):
     filesToCommit = files
     print(filesToCommit)
 
-
 @app.get("/getDiff")
 async def getDiff():
+    global diff
+    global files
+    global repo
     repo = pygit2.Repository(
         r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
-    diff = repo.diff('HEAD', cached=False)
+    files = []
 
+    status = repo.status()
+    for entry in status:
+        statusMode = ""
+        if(status[entry] == pygit2.GIT_STATUS_WT_NEW or status[entry] == 1):
+            statusMode = "NEW"
+        if(status[entry] == pygit2.GIT_STATUS_WT_MODIFIED or status[entry] == 258 or status[entry] == 2):
+            statusMode = "MODIFIED"
+        if(status[entry] == pygit2.GIT_STATUS_WT_DELETED or status[entry] == 4):
+            statusMode = "DELETED"
+        if statusMode != "":
+            files.append((entry,statusMode))
+        print(entry,status[entry])
+
+    unstageAllFiles()
+    
+    diff = repo.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT+pygit2.GIT_DIFF_SHOW_BINARY)
     orderPatches(diff)
-    return diff.patch
 
+    return {'files':files,'diff':diff.patch}
+
+def partialCommit(commitToPublish,uniDiffPatches):
+    global repo
+    os.chdir(r'C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code')
+    for patch in commitToPublish.patches:
+        diffToApply = ""
+        uniDiffPatch = None
+        #searching is needed because unidiff parsing changes the order
+        for unidiffPat in uniDiffPatches:
+            if patch.filename == unidiffPat.target_file[2:]:
+                uniDiffPatch = unidiffPat
+        fileStatus = repo.status()[patch.filename]
+        if fileStatus == pygit2.GIT_STATUS_WT_NEW or fileStatus == pygit2.GIT_STATUS_WT_DELETED:
+            continue
+        filesToCommit.append(patch.filename)
+        source = ""
+        target = ""
+        if not uniDiffPatch.is_binary_file:
+            source = "--- %s%s\n" % (
+                uniDiffPatch.source_file,
+                '\t' + uniDiffPatch.source_timestamp if uniDiffPatch.source_timestamp else '')
+            target = "+++ %s%s\n" % (
+                uniDiffPatch.target_file,
+                '\t' + uniDiffPatch.target_timestamp if uniDiffPatch.target_timestamp else '')
+        diffToApply += str(uniDiffPatch.patch_info) + source + target
+
+        for hunk in patch.hunks:
+            if hunk.answer == "":
+                print(("hunk answer empty"))
+                continue
+            hunkPatch = diffToApply + str(uniDiffPatch[hunk.hunkNumber])
+            print("hunk", hunk)
+            print("hunkPatch generated:", hunkPatch)
+            hunkPatch = hunkPatch.replace("\r\n", "\n").replace("\r", "\n")
+            #https://stackoverflow.com/questions/10785131/line-endings-in-python
+            with open("partial.patch", "w+", newline="") as text_file:
+                text_file.write(hunkPatch)
+
+            with open("partial.log", "w+") as text_file:
+                process = subprocess.Popen(['git', 'apply', '--cached', '-v', r'C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code\partial.patch'],
+                                    stdout=text_file, 
+                                    stderr=text_file)
+                process.communicate()
+
+            #TODO: this would the more elegant solution to directly apply the diff in pygit2, however somhow this does not work
+            #newDiff = pygit2.Diff.parse_diff(diffToApply)
+            #repo.apply(newDiff,pygit2.GIT_APPLY_LOCATION_INDEX)
+
+            repo.index.read()
+            tree = repo.index.write_tree()
+            parent, ref = repo.resolve_refish(refish=repo.head.name)
+            repo.create_commit(
+                ref.name,
+                repo.default_signature,
+                repo.default_signature,
+                hunk.answer,
+                tree,
+                [parent.oid],
+            )
+
+def getFilesToAddAndToRemove(commitToPublish,patches):
+    global repo
+    wholeFilesToAdd = []
+    wholeFilesToRemove = []
+    for patch in commitToPublish.patches:
+        diffToApply = ""
+        uniDiffPatch = None
+        #searching is needed because unidiff parsing changes the order
+        for unidiffPat in patches:
+            if patch.filename == unidiffPat.target_file[2:]:
+                uniDiffPatch = unidiffPat
+        fileStatus = repo.status()[patch.filename]
+        if fileStatus == pygit2.GIT_STATUS_WT_NEW or fileStatus == pygit2.GIT_STATUS_WT_DELETED:
+            if fileStatus == pygit2.GIT_STATUS_WT_NEW:
+                wholeFilesToAdd.append(patch.filename)
+            if fileStatus ==  pygit2.GIT_STATUS_WT_DELETED:
+                wholeFilesToRemove.append(patch.filename)
+            continue
+    return (wholeFilesToAdd,wholeFilesToRemove)
+def unstageAllFiles():
+    global repo
+    global files
+    # unstage all files
+    for (path,mode) in files:
+        if(mode == "DELETED"):
+            obj = repo.revparse_single('HEAD').tree[path]  # Get object from db
+            repo.index.add(pygit2.IndexEntry(
+            path, obj.oid, obj.filemode))
+        if(path in repo.index):
+            repo.index.remove(path)
+            # Restore object from db
+            if(path in repo.revparse_single('HEAD').tree):
+                obj = repo.revparse_single('HEAD').tree[path]  # Get object from db
+                repo.index.add(pygit2.IndexEntry(
+                path, obj.oid, obj.filemode))  # Add to index
+    repo.index.write()
 
 @app.post("/commit")
-async def commitFiles(commit: Commit):
+async def commitFiles(commitToPublish: CommitToPublish):
     global filesToCommit
-    print(filesToCommit)
-    repo = pygit2.Repository(
-        r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
+    global diff
+    global files
+    global repo
 
-    # unstage all files
-    for path in allFiles:
-        repo.index.remove(path)
-        # Restore object from db
-        obj = repo.revparse_single('HEAD').tree[path]  # Get object from db
-        repo.index.add(pygit2.IndexEntry(
-            path, obj.oid, obj.filemode))  # Add to index
+    diff = repo.diff('HEAD', cached=False)
+    patches = PatchSet.from_string(diff.patch)
+    status = repo.status()
 
-    # Write index
-    repo.index.write()
+    print(commitToPublish)
 
-    for path in filesToCommit:
-        repo.index.add(path)
-    repo.index.write()
-    tree = repo.index.write_tree()
-    parent, ref = repo.resolve_refish(refish=repo.head.name)
-    repo.create_commit(
-        ref.name,
-        repo.default_signature,
-        repo.default_signature,
-        commit.message,
-        tree,
-        [parent.oid],
-    )
+
+    partialCommit(commitToPublish,patches)
+    wholeFilesToAdd,wholeFilesToRemove = getFilesToAddAndToRemove(commitToPublish,patches)
+
+    for patch in commitToPublish.patches:
+        if patch.filename in wholeFilesToAdd:
+            repo.index.add(patch.filename)
+        elif patch.filename in wholeFilesToRemove:
+            repo.index.remove(patch.filename)
+        else:
+            continue
+        message = ""
+        for hunk in patch.hunks:
+            message += hunk.answer
+        repo.index.write()
+        tree = repo.index.write_tree()
+        parent, ref = repo.resolve_refish(refish=repo.head.name)
+        repo.create_commit(
+            ref.name,
+            repo.default_signature,
+            repo.default_signature,
+            message,
+            tree,
+            [parent.oid],
+        )
 
 
 @app.get("/getQuestions")
 async def getQuestions(type: str = None, issues: List[int] = None, nextFile: bool = False):
     global openPatches
+    global diff
 
     needWhyQuestions = True
     if issues:
         needWhyQuestions = False
-
-    print(nextFile)
-    print(openPatches)
-    if nextFile or len(orderedPatches[0][1]) == 0:
-        del openPatches[0]
-
-    repo = pygit2.Repository(
-        r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
-
-    # check if this is needed to also add untracked files
-    repo.index.add_all(
-        [r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code"])
-    repo.index.write()
-    repo.index.write_tree()
-
     # How many Files changed in the Diff
-    diff = repo.diff('HEAD', cached=False)
-    if(diff.stats.files_changed == 0 or len(openPatches) == 0 or len(openPatches[0][1]) == 0):
+    if(diff.stats.files_changed == 0 or len(openPatches) == 0):
         return {"question": "Finsih"}
-    # number of patches is normaly the same as number of files, i think there is a difference when the files do not contain changes that are diffable
-    # then there is maybe no patch
+    print("openPatches before delete", openPatches)
+    if nextFile or len(openPatches[0][1]) == 0:
+            del openPatches[0]
+    print("openPatches after delete", openPatches)
+    if(diff.stats.files_changed == 0 or len(openPatches) == 0):
+        return {"question": "Finsih"}
 
-    # a patch contains hunks, these hunks are the areas in the file that have changes
 
     for diffPatch in diff:
         print(diffPatch.line_stats)
         print("Patch has " + str(len(diffPatch.hunks)) + " hunks")
 
-    print(openPatches)
+    print("get Questio OPEN Patches",openPatches)
+    print("get Questio ORDERED Patches",orderedPatches)
+
+    hunkCount = 0
+    for patch in orderedPatches:
+        if patch[0] == openPatches[0][0]:
+            hunkCount = len(patch[1])
 
     nextHunk = {"question": "This code part will",
-                "file": openPatches[0][0],
-                "hunk": openPatches[0][1][0][0],
+                "fileNumber": openPatches[0][0],
+                "filePath": openPatches[0][2],
+                "hunkNumber": openPatches[0][1][0][0],
+                "openFiles": len(openPatches),
+                "openHunks":len(openPatches[0][1]),
+                "allHunksForThisFile": hunkCount
                 }
 
     del openPatches[0][1][0]
