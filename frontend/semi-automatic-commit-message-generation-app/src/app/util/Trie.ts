@@ -4,6 +4,7 @@ export class trie_node {
   public path!: string;
   public children: Map<string, trie_node>;
   public selected: boolean = false;
+  public mode: string = "";
   public parent!: trie_node;
 
   public getChildren(): trie_node[] {
@@ -41,7 +42,7 @@ export class trie<T> {
     return !!node;
   }
 
-  public insert(key: string, value: string): void {
+  public insert(key: string, value: string,mode?:string): void {
     let node = this.root;
     let remaining = key;
     while (remaining.length > 0) {
@@ -74,6 +75,7 @@ export class trie<T> {
           node.children.delete(childKey);
           child.path = prefix;
           child.parent = node
+          child.mode = mode
           node.children.set(prefix, child);
           remaining = remaining.slice(prefix.length+1);
           break;
@@ -83,6 +85,7 @@ export class trie<T> {
         child = new trie_node();
         child.path = remaining
         child.parent = node
+        child.mode = mode
         node.children.set(remaining, child);
         remaining = "";
       }

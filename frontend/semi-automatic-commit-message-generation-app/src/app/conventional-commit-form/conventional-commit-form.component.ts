@@ -13,6 +13,10 @@ import {BehaviorSubject, Observable, of as observableOf, throwError} from 'rxjs'
 import {DiffFile} from "diff2html/lib/types";
 import {catchError} from "rxjs/operators";
 import {MatSnackBar} from "@angular/material/snack-bar";
+import {QuestionHunk} from "../model/QuestionHunk";
+import {CommitToPublish} from "../model/commitToPublish";
+import {Patch} from "../model/Patch";
+import {Hunk} from "../model/Hunk";
 
 export class FileNode {
   children!: FileNode[];
@@ -35,6 +39,10 @@ export class ConventionalCommitFormComponent implements OnInit {
   nestedTreeControl: NestedTreeControl<trie_node>;
   nestedDataSource: MatTreeNestedDataSource<trie_node>;
   dataChange: BehaviorSubject<trie_node[]> = new BehaviorSubject<trie_node[]>([]);
+  openFiles: number = 1;
+  openHunks: number = 1;
+  allHunksForCurrentFile: number = 1;
+  finish: boolean = false;
 
   constructor(private fb: FormBuilder, private apiService:ApiService, private snackBar:MatSnackBar) {
     this.commitTypes =Object.values(Type);
@@ -61,6 +69,8 @@ export class ConventionalCommitFormComponent implements OnInit {
 
 
   model = new Commit();
+  filesToCommit: string[] = []
+  oldAutomaticAddedLines: string = ""
 
   submitted = false;
 
@@ -70,11 +80,11 @@ export class ConventionalCommitFormComponent implements OnInit {
 
   selectionChange(stepperEvent: StepperSelectionEvent){
     if(stepperEvent.selectedIndex === 1) {
-      let filesToCommit: string[] = []
+      this.filesToCommit = []
       for(let node of this.fileNamesOfSelectedLeafNodes(this.trie.root)){
-        filesToCommit.push(this.getFullPath(node))
+        this.filesToCommit.push(this.getFullPath(node))
       }
-      let missingFiles = this.oldFiles.filter(path => filesToCommit.indexOf(path) < 0);
+      let missingFiles = this.oldFiles.filter(path => this.filesToCommit.indexOf(path) < 0);
 
       console.log(missingFiles)
       if(missingFiles.length > 0){
@@ -82,8 +92,13 @@ export class ConventionalCommitFormComponent implements OnInit {
         for (let file of missingFiles){
           //does there exits a hunk for that file?
           let indices = [], i;
-          for(i = 0; i < this.hunksForQuestions.length; i++){
-            if (this.hunksForQuestions[i][0].newName === file){
+          for(i = 0; i < this.questionHunks.length; i++){
+            let name = this.questionHunks[i].diffFile?.newName
+            console.log("hallo")
+            if(name){
+              name = this.questionHunks[i].diffFile?.oldName
+            }
+            if (name === file){
               indices.push(i);
             }
           }
@@ -94,10 +109,10 @@ export class ConventionalCommitFormComponent implements OnInit {
           }
         }
       }
-      this.oldFiles = filesToCommit;
-      console.log(this.hunksForQuestions)
-      this.apiService.filesToCommit(filesToCommit).subscribe(() => {
-        if(this.hunksForQuestions.length == 0) this.addQuestion(undefined,false)
+      this.oldFiles = this.filesToCommit;
+      console.log(this.questionHunks)
+      this.apiService.filesToCommit(this.filesToCommit).subscribe(() => {
+        if(this.questionHunks.length == 0) this.addQuestionHunk(undefined,false)
       })
       //focus introduces error message that field got change after check see https://github.com/angular/components/issues/12070
       this.focus = false
@@ -209,16 +224,16 @@ export class ConventionalCommitFormComponent implements OnInit {
 
 
   userForm: FormGroup;
-  questionsForHunks: string[] = [];
-  hunksForQuestions: [DiffFile,string][] = [];
+  questionHunks: QuestionHunk[] = [];
   fileHtml: string = "";
+
   public focus: boolean = true;
 
-  addQuestion(stepper?: MatStepper,nextFile: boolean = false): void {
+  addQuestionHunk(stepper?: MatStepper, nextFile: boolean = false): void {
     this.loading = true
-    this.apiService.getQuestions(nextFile).pipe(catchError(() => {this.loading = false; return throwError("Request had a Error")} )).subscribe((question) => {
+    this.apiService.getQuestionHunk(nextFile).pipe(catchError(() => {this.loading = false; return throwError("Request had a Error")} )).subscribe((questionHunk) => {
 
-      if(question.question == 'Finsih'){
+      if(questionHunk.question == 'Finsih'){
         this.loading = false
         this.snackBar.open("All Questions answered","",{
           duration: 3000
@@ -256,8 +271,8 @@ export class ConventionalCommitFormComponent implements OnInit {
 
   removeQuestion(index: number) {
     (this.userForm.get('answers') as FormArray).removeAt(index);
-    this.hunksForQuestions.forEach( (item, ind) => {
-      if(index === ind) this.hunksForQuestions.splice(index,1);
+    this.questionHunks.forEach( (item, ind) => {
+      if(index === ind) this.questionHunks.splice(index,1);
     });
   }
 
@@ -315,7 +330,13 @@ export class ConventionalCommitFormComponent implements OnInit {
     console.log(this.trie)
     console.log(node)
     console.log(this.getFullPath(node))
-    let diffFile = this.parsedDiff.find(diff => {return diff.newName === this.getFullPath(node)});
+    let diffFile = this.parsedDiff.find(diff => {
+      if(diff.newName === "" || diff.isNew){
+        return diff.newName === this.getFullPath(node)
+      } else {
+        return diff.oldName === this.getFullPath(node)
+      }
+    });
     if (diffFile){
       this.fileHtml = Diff2Html.html([diffFile],{ drawFileList: false, matching: 'lines' })
     }
