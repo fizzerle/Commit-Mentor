@@ -3,15 +3,16 @@ import {HttpClient, HttpErrorResponse, HttpParams} from '@angular/common/http';
 
 import { Observable, throwError } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators';
-import {Question} from "../model/question";
 import {MatSnackBar} from "@angular/material/snack-bar";
+import {QuestionHunk} from "../model/QuestionHunk";
+import {CommitToPublish} from "../model/commitToPublish";
 
 @Injectable()
 export class ApiService {
   constructor(private http: HttpClient, private snackBar: MatSnackBar) { }
 
   getGitDiff() {
-    return this.http.get<string>("/api/getDiff")
+    return this.http.get<any>("/api/getDiff")
   }
 
   filesToCommit(files: string[]) {
@@ -21,14 +22,14 @@ export class ApiService {
 
 
 
-  getQuestions(nextFile:boolean) {
+  getQuestionHunk(nextFile:boolean) {
     let params = new HttpParams().set("nextFile",nextFile); //Create new HttpParams
 
-    return this.http.get<Question>("/api/getQuestions",{params: params})
+    return this.http.get<QuestionHunk>("/api/getQuestions",{params: params})
   }
 
-  postCommit(commitMessage: string) {
-    return this.http.post("/api/commit",{ message: commitMessage },{ observe: 'response' }).pipe(
+  postCommit(commitToPublish: CommitToPublish) {
+    return this.http.post("/api/commit",commitToPublish,{ observe: 'response' }).pipe(
       catchError(this.handleError)
     );
   }

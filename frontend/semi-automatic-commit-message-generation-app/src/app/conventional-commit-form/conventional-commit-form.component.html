@@ -1,45 +1,34 @@
- <mat-stepper [linear]=true (selectionChange)="selectionChange($event)" #stepper >
+ <mat-stepper (selectionChange)="selectionChange($event)" #stepper >
     <mat-step [stepControl]="commitForm.control">
-      {{model | json}}
       <form (ngSubmit)="onSubmit()" #commitForm="ngForm">
         <ng-template matStepLabel>Basic Commit Information</ng-template>
           <mat-form-field class="noPadding"  appearance="outline">
             <mat-label>Type</mat-label>
             <mat-select
               required
-              [(ngModel)]="model.type" name="type">
+              [(ngModel)]="model.type" (ngModelChange)="commitMessageChanged()" name="type">
               <mat-option *ngFor="let type of commitTypes" [value]="type">{{type}}</mat-option>
             </mat-select>
           </mat-form-field>
           <mat-form-field class="noPadding" appearance="outline">
             <mat-label>Scope</mat-label>
             <input matInput type="text"  class="form-control"
-                   [(ngModel)]="model.scope" name="scope">
+                   [(ngModel)]="model.scope" name="scope" (ngModelChange)="commitMessageChanged()">
           </mat-form-field>
-          <mat-form-field class="noPadding" appearance="outline">
-            <mat-label>Short Description</mat-label>
-            <input matInput type="text"  class="form-control"
-                   [(ngModel)]="model.short_description" name="short_description">
-          </mat-form-field>
-          <mat-form-field class="noPadding" appearance="outline">
-            <mat-label>Closes Issue With ID (Split multiple Issues with ,)</mat-label>
-            <input matInput type="text"  class="form-control" pattern="(\d+)(,\s*\d+)*"
-                   #issueIDs="ngModel"
-                   [(ngModel)]="model.closesIssue" name="closes_issue">
-          </mat-form-field>
-        <p>
-          <mat-checkbox [(ngModel)]="model.breakingChanges" name="breaking Change">Breaking Change</mat-checkbox>
-        </p>
-      </form>
-      <div *ngIf="diff !== null">
         <div style="margin-bottom: 1rem">
-          <button mat-raised-button matStepperNext>Next</button>
+          <button mat-raised-button (click)="firstStepSubmit(stepper)">Next</button>
         </div>
-
+      </form>
+      <div *ngIf="diff === undefined">
+        <p>Loading the diff...</p>
+        <mat-spinner></mat-spinner>
+      </div>
+      <div *ngIf="diff !== undefined">
         <mat-tree [dataSource]="nestedDataSource" [treeControl]="nestedTreeControl" class="example-tree" style="margin-bottom: 1rem">
           <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle matTreeNodePadding>
             <li>
               <button mat-icon-button disabled></button>
+              <div [class]="getCircleColorClass(node.mode[0])" title="{{node.mode}}">{{node.mode[0]}}</div>
               <mat-checkbox class="checklist-branch-node"
                             [checked]="node.selected"
                             (change)="leafNodeSelect(node)"></mat-checkbox><div style="cursor: pointer; display: inline-flex" (click)="fileClicked(node)">{{node.path}}</div>
@@ -70,7 +59,7 @@
         </mat-tree>
 
         <div [innerHtml]="fileHtml"></div>
-        <mat-expansion-panel>
+        <mat-expansion-panel >
           <mat-expansion-panel-header>
             <mat-panel-title>
               Click here to see the full diff
@@ -82,6 +71,11 @@
       <p *ngIf="diff === null"><b>No file changes detected. Maybe you have selected the wrong git project</b></p>
     </mat-step>
     <mat-step label="Fill In Body" style="overflow: visible">
+
+      <div *ngIf="questionHunks.length == 0">
+        <p>Loading the hunks...</p>
+        <mat-spinner></mat-spinner>
+      </div>
       <form [formGroup]="userForm" (ngSubmit)="send(userForm.value)">
         <div *ngFor="let answer of getQuestionFormControls(); let i = index">
           <div style=" background-color: white;       position: -webkit-sticky;
@@ -89,27 +83,35 @@
     bottom: 0; padding-bottom: 1rem;"></div>
           <mat-card style="margin-top: 1rem;   margin-bottom: 1rem;">
             <mat-card-content>
-              <div [innerHtml]="hunksForQuestions[i][1]"></div>
+              <div [innerHtml]="questionHunks[i].diff"></div>
               <div style=" background-color: white;       position: -webkit-sticky;
   position: sticky;
-    bottom: 0; padding-bottom: 1rem;">
+    bottom: 0; padding-bottom: 1rem;   align-items: center;
+  justify-content: center;">
                 <mat-form-field class="noPadding" appearance="outline" style="margin-top: 1rem; display: inline-block; margin-right: 1rem">
-                  <mat-label>{{questionsForHunks[i]}}</mat-label>
+                  <mat-label>{{questionHunks[i].question}}</mat-label>
                   <textarea matInput type="text"  cdkTextareaAutosize #autosize="cdkTextareaAutosize"cdkAutosizeMinRows="1" cdkAutosizeMaxRows="5" class="form-control"
                             [formControl]="answer" name="answer" [focusMe]="focus" value=""></textarea>
                 </mat-form-field>
-                <button mat-raised-button="" (click)="addQuestion(stepper,false)" style="vertical-align: super;margin-left: 1rem;" [class.spinner]="loading" color="primary" [disabled]="loading ||20 ==  parsedDiff.length">Question current file more</button>
-                <button mat-raised-button="" (click)="addQuestion(stepper,true)" style="vertical-align: super;margin-left: 1rem;" [class.spinner]="loading" color="primary" [disabled]="loading || 20 == parsedDiff.length">Question next file</button>
-                <button mat-raised-button (click)="removeQuestion(i)" style="vertical-align: super;margin-left: 1rem;">This Question is Bad</button>
+                <button mat-raised-button="" (click)="addQuestionHunk(stepper,false)" style="margin-left: 1rem;" [class.spinner]="loading" color="primary" [disabled]="loading">Question current file more</button>
+                <button mat-raised-button="" (click)="addQuestionHunk(stepper,true)" style="margin-left: 1rem;" [class.spinner]="loading" color="primary" [disabled]="loading">Question next file</button>
+                <button mat-raised-button (click)="removeQuestion(i)" style="margin-left: 1rem;">This Question is Bad</button>
+                <div style="display: inline-flex; flex-direction: column; min-width: 11rem; vertical-align: middle; justify-content: center;">
+                    <div style="display: inline-flex; flex-direction: row; align-items: center">
+                      <div style="margin-left: 1rem; margin-right: 0.3rem;font-size: 0.8rem;">Files completed</div>
+                      <span style="display: inline-flex; max-width: 3rem; vertical-align: text-top;  margin-right: 0.4rem" >{{oldFiles.length-openFiles}}/{{oldFiles.length}}</span>
+                      <mat-progress-bar style="display: inline-flex; max-width: 3rem; vertical-align: text-top" mode="determinate" [value]="((oldFiles.length-openFiles)/oldFiles.length)*100" color="warn" [class.green-progress]="(oldFiles.length-openFiles)/oldFiles.length> 0.7">Test</mat-progress-bar>
+                    </div>
+                  <div style="display: inline-flex;flex-direction: row; align-items: center">
+                    <div style="margin-left: 1rem; margin-right: 0.3rem;font-size: 0.8rem;">Hunks completed</div>
+                    <span style="display: inline-flex; max-width: 3rem; vertical-align: text-top; margin-right: 0.4rem">{{allHunksForCurrentFile-openHunks}}/{{allHunksForCurrentFile}}</span>
+                    <mat-progress-bar style="display: inline-flex; max-width: 3rem; vertical-align: text-top" mode="determinate" [value]="((allHunksForCurrentFile-openHunks)/allHunksForCurrentFile)*100" color="warn" [class.green-progress]="(allHunksForCurrentFile-openHunks)/allHunksForCurrentFile > 0.7">Test</mat-progress-bar>
+                </div>
+                </div>
               </div>
             </mat-card-content>
           </mat-card>
         </div>
-        <mat-card style="margin-top: 1rem">
-          <mat-card-content>
-            <span>Files included in message</span><mat-progress-bar mode="determinate" [value]="(20/parsedDiff.length)*100" color="warn" [class.green-progress]="20/parsedDiff.length > 0.7">Test</mat-progress-bar>
-          </mat-card-content>
-        </mat-card>
         <br>
         <br>
         <div>

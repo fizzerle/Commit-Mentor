@@ -9,11 +9,20 @@ import os
 import subprocess
 import time
 
+#nngen imports
+# importing module
+import sys
+  
+# appending a path
+sys.path.append('../nngen')
+import nngen
+
 orderedPatches = []
 openPatches = []
 filesToCommit = []
 files = []
 allFiles = []
+patchesDiff = []
 app = FastAPI()
 
 diff = None
@@ -47,11 +56,13 @@ def orderPatches(diff):
     global openPatches
     global filesToCommit
     global allFiles
+    global patchesDiff
     orderedPatches = []
     filesToCommit = []
     allFiles = []
     for idx, patch in enumerate(diff):
         orderedPatches.append([idx, patch, [], patch.delta.new_file.path])
+        patchesDiff.append(patch.text)
     orderedPatches = sorted(
         orderedPatches, key=lambda tuple: tuple[1].line_stats[0]+tuple[1].line_stats[1]+tuple[1].line_stats[2],  reverse=True)
 
@@ -115,6 +126,8 @@ async def getDiff():
     global diff
     global files
     global repo
+    global patchesDiff
+
     repo = pygit2.Repository(
         r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
     files = []
@@ -136,6 +149,8 @@ async def getDiff():
     
     diff = repo.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT+pygit2.GIT_DIFF_SHOW_BINARY)
     orderPatches(diff)
+    print(patchesDiff)
+    nngen.main("../nngen/data/cleaned.train.diff", "../nngen/data/cleaned.train.msg", patchesDiff)
 
     return {'files':files,'diff':diff.patch}
 

@@ -1,0 +1,13 @@
+diff --git a/frontend/semi-automatic-commit-message-generation-app/src/app/app.module.ts b/frontend/semi-automatic-commit-message-generation-app/src/app/app.module.ts
+index 5329c2e..b82a458 100644
+--- a/frontend/semi-automatic-commit-message-generation-app/src/app/app.module.ts
++++ b/frontend/semi-automatic-commit-message-generation-app/src/app/app.module.ts
+@@ -35,6 +37,8 @@ import {FocusDirective} from "./conventional-commit-form/focus.directive";
+   ],
+   imports: [
+     BrowserModule,
++    MatChipsModule,
++    MatProgressSpinnerModule,
+     AppRoutingModule,
+     HttpClientModule,
+     BrowserAnimationsModule,
