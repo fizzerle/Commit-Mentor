@@ -13,3 +13,5 @@ To install the hook for automatic execution of the system:
 To run backed:
 
     uvicorn main:app --reload
+
+    pip install -r requirements.txt
