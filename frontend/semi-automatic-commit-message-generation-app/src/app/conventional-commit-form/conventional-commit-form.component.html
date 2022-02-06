@@ -1,7 +1,7 @@
  <mat-stepper (selectionChange)="selectionChange($event)" #stepper >
     <mat-step [stepControl]="commitForm.control">
       <form (ngSubmit)="onSubmit()" #commitForm="ngForm">
-        <ng-template matStepLabel>Basic Commit Information</ng-template>
+        <ng-template matStepLabel>Basic Commit Information1</ng-template>
           <mat-form-field class="noPadding"  appearance="outline">
             <mat-label>Type</mat-label>
             <mat-select

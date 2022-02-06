@@ -9,13 +9,6 @@ import os
 import subprocess
 import time
 
-#nngen imports
-# importing module
-import sys
-  
-# appending a path
-sys.path.append('../nngen')
-import nngen
 
 orderedPatches = []
 openPatches = []
@@ -148,9 +141,8 @@ async def getDiff():
     unstageAllFiles()
     
     diff = repo.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT+pygit2.GIT_DIFF_SHOW_BINARY)
-    orderPatches(diff)
-    print(patchesDiff)
-    nngen.main("../nngen/data/cleaned.train.diff", "../nngen/data/cleaned.train.msg", patchesDiff)
+    #orderPatches(diff)
+    #print(patchesDiff)
 
     return {'files':files,'diff':diff.patch}
 

@@ -1,13 +1,13 @@
-diff --git a/frontend/semi-automatic-commit-message-generation-app/src/app/app.module.ts b/frontend/semi-automatic-commit-message-generation-app/src/app/app.module.ts
-index 5329c2e..b82a458 100644
---- a/frontend/semi-automatic-commit-message-generation-app/src/app/app.module.ts
-+++ b/frontend/semi-automatic-commit-message-generation-app/src/app/app.module.ts
-@@ -35,6 +37,8 @@ import {FocusDirective} from "./conventional-commit-form/focus.directive";
-   ],
-   imports: [
-     BrowserModule,
-+    MatChipsModule,
-+    MatProgressSpinnerModule,
-     AppRoutingModule,
-     HttpClientModule,
-     BrowserAnimationsModule,
+diff --git a/README.md b/README.md
+index c502103..dbbb3a5 100644
+--- a/README.md
++++ b/README.md
+@@ -12,4 +12,6 @@ To install the hook for automatic execution of the system:
+ 
+ To run backed:
+ 
+-    uvicorn main:app --reload
+\ No newline at end of file
++    uvicorn main:app --reload
++
++    pip install -r requirements.txt
