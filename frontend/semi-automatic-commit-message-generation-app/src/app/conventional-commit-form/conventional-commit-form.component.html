@@ -44,6 +44,12 @@
 
         </mat-tree>
 
+      </div>
+    <ng-template matStepLabel>Basic Commit Information</ng-template>
+    <div style="margin-bottom: 1rem">
+      <button mat-raised-button (click)="firstStepSubmit(stepper)">Next</button>
+    </div>
+      <div *ngIf="diff !== undefined">
         <div [innerHtml]="fileHtml"></div>
         <mat-expansion-panel >
           <mat-expansion-panel-header>
