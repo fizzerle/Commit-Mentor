@@ -116,14 +116,22 @@ async def filesToCom(filesSelectedByUser: Files):
     print(filesToCommit)
 
 @app.get("/getDiff")
-async def getDiff():
+async def getDiff(path: str):
     global diff
     global files
     global repo
     global patchesDiff
-
-    repo = pygit2.Repository(
-        r"C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code")
+    global diffClean
+    global projectPath
+    if(os.path.isdir(path)):
+        projectPath = path
+        try:
+            repo = pygit2.Repository(projectPath)
+        except pygit2.GitError:
+            raise HTTPException(status_code=404, detail="The directory does not contain a git repository")
+    else:
+        raise HTTPException(status_code=404, detail="Directory not found")
+    repo = pygit2.Repository(projectPath)
     files = []
 
     status = repo.status()
@@ -184,7 +192,7 @@ def partialCommit(commitToPublish,uniDiffPatches):
                 text_file.write(hunkPatch)
 
             with open("partial.log", "w+") as text_file:
-                process = subprocess.Popen(['git', 'apply', '--cached', '-v', r'C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code\partial.patch'],
+                process = subprocess.Popen(['git', 'apply', '--cached', '-v', projectPath+"\partial.patch"],
                                     stdout=text_file, 
                                     stderr=text_file)
                 process.communicate()
@@ -276,6 +284,8 @@ async def getQuestions(type: str = None, issues: List[int] = None, nextFile: boo
     needWhyQuestions = True
     if issues:
         needWhyQuestions = False
+    print(diff.stats.files_changed)
+    print(openPatches)
     # How many Files changed in the Diff
     if(diff.stats.files_changed == 0 or len(openPatches) == 0):
         return {"question": "Finsih"}
