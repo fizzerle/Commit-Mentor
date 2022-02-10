@@ -418,15 +418,10 @@ export class ConventionalCommitFormComponent implements OnInit {
       })
       return
     }
-    console.log("submit first step2")
-    //skip hunk asking on certain commit types
-    if(this.model.type === Type.style){
-      this.snackBar.open("Skipping hunk question asking because of commit type","",{
-        duration: 3000
-      })
-      stepper.selectedIndex = 2
-      return
-    }
     stepper.next()
+  }
+
+  onCommitSelection(commit: Commit) {
+    this.selectedCommit = commit;
   }
 }
