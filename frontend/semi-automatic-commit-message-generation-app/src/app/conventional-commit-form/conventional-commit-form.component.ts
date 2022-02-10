@@ -121,39 +121,37 @@ export class ConventionalCommitFormComponent implements OnInit {
       })
     }
     if(stepperEvent.selectedIndex === 2){
-      this.commitMessage = ""
-      this.commitMessage = ""+this.getEnumKeyByEnumValue(Type,this.model.type);
-      if(this.model.scope) this.commitMessage += "("+ this.model.scope +")"
-      this.commitMessage += ": "
-      if(this.model.short_description) this.commitMessage += this.model.short_description + "\n"
+      this.finishMessageSelected()
+    }
+  }
 
-      console.log(this.userForm.value.answers)
-      let newAddedLines = ""
-      for(let answer of this.userForm.value.answers){
-        if(answer === null) continue
-        for(let answerLine of answer.split("\n")){
-          if(answerLine !== null || answerLine !== ""){
-            newAddedLines += "* " +answerLine + "\n"
-          }
+  /*
+  Maps the answers and belongs to information to commit objects, after this step all the hunks are assigned to a commit
+   */
+  private finishMessageSelected() {
+    console.log(this.userForm.getRawValue())
+    this.commits = []
+    this.userForm.getRawValue().answers.forEach((answer: string,index:number) => {
+      if (answer !== null && answer !== "") {
+        const newCommit = new Commit(undefined,undefined,answer)
+        newCommit.mainHunk = index
+        newCommit.hunks.push(index)
+        this.commits.push(newCommit)
+      } else {
+        const indexToWhichCommitHunkBelongs = this.userForm.value.belongsTo[index]
+        const commitHunkBelongsTo = this.commits.find((commit) => commit.mainHunk === indexToWhichCommitHunkBelongs);
+        if(commitHunkBelongsTo === undefined){
+          console.error("Tried to find the commit the hunk "+ index + "belongs to, but could not find it." +
+            "This should not occur, because the UI makes sure every hunk is assigned either a message or it belongs to a commit")
+        } else{
+          commitHunkBelongsTo.hunks.push(index)
         }
       }
+    })
+    this.selectedCommit = this.commits[0]
+    this.buildCommitMessageStringFromCommit(this.selectedCommit)
+    //transformAnswersInAMessageText()
 
-      console.log("ADDED LINES",newAddedLines)
-      if(this.oldAutomaticAddedLines !== newAddedLines){
-        this.model.body += newAddedLines
-      }
-
-      this.oldAutomaticAddedLines = newAddedLines
-
-      if(this.model.body) this.commitMessage += this.model.body + "\n"
-
-      if(this.model.breakingChanges) this.commitMessage += "BREAKING CHANGE: "
-      if(this.model.closesIssue) {
-        this.commitMessage += "Closes "
-        this.model.closesIssue.split(",").forEach((id) => this.commitMessage += "#"+id+" ")
-      }
-
-    }
   }
 
   getEnumKeyByEnumValue<T extends {[index:string]:string}>(myEnum: T, enumValue:any) {
