@@ -1,29 +1,15 @@
- <mat-stepper (selectionChange)="selectionChange($event)" #stepper >
-    <mat-step [stepControl]="commitForm.control">
-      <form (ngSubmit)="onSubmit()" #commitForm="ngForm">
-        <ng-template matStepLabel>Basic Commit Information1</ng-template>
-          <mat-form-field class="noPadding"  appearance="outline">
-            <mat-label>Type</mat-label>
-            <mat-select
-              required
-              [(ngModel)]="model.type" (ngModelChange)="commitMessageChanged()" name="type">
-              <mat-option *ngFor="let type of commitTypes" [value]="type">{{type}}</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field class="noPadding" appearance="outline">
-            <mat-label>Scope</mat-label>
-            <input matInput type="text"  class="form-control"
-                   [(ngModel)]="model.scope" name="scope" (ngModelChange)="commitMessageChanged()">
-          </mat-form-field>
-        <div style="margin-bottom: 1rem">
-          <button mat-raised-button (click)="firstStepSubmit(stepper)">Next</button>
-        </div>
-      </form>
-      <div *ngIf="diff === undefined">
+ <mat-stepper (selectionChange)="stepperSelectionChanged($event)" [linear]=true #stepper >
+    <mat-step [completed]="this.fileNamesOfSelectedLeafNodes(this.trie.root).length !== 0">
+
+      <div *ngIf="diffLoading">
         <p>Loading the diff...</p>
         <mat-spinner></mat-spinner>
       </div>
+      <div *ngIf="!diffLoading && projectPath == ''">
+        <p>Please input a valid project directory in the header</p>
+      </div>
       <div *ngIf="diff !== undefined">
+        <h2>Please select the files to commit:</h2>
         <mat-tree [dataSource]="nestedDataSource" [treeControl]="nestedTreeControl" class="example-tree" style="margin-bottom: 1rem">
           <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle matTreeNodePadding>
             <li>
