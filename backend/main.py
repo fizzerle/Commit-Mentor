@@ -142,14 +142,15 @@ async def getDiff():
     unstageAllFiles()
     
     diff = repo.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT+pygit2.GIT_DIFF_SHOW_BINARY)
-    #orderPatches(diff)
-    #print(patchesDiff)
+    diffClean = repo.diff('HEAD', cached=False)
+    orderPatches(diff)
 
     return {'files':files,'diff':diff.patch}
 
 def partialCommit(commitToPublish,uniDiffPatches):
     global repo
-    os.chdir(r'C:\Users\Thomas\Dropbox\INFO Studium\Master\Masterarbeit\Code')
+    global projectPath
+    os.chdir(projectPath)
     for patch in commitToPublish.patches:
         diffToApply = ""
         uniDiffPatch = None
@@ -173,9 +174,7 @@ def partialCommit(commitToPublish,uniDiffPatches):
         diffToApply += str(uniDiffPatch.patch_info) + source + target
 
         for hunk in patch.hunks:
-            if hunk.answer == "":
-                print(("hunk answer empty"))
-                continue
+            print("hunkNumber", hunk.hunkNumber)
             hunkPatch = diffToApply + str(uniDiffPatch[hunk.hunkNumber])
             print("hunk", hunk)
             print("hunkPatch generated:", hunkPatch)
@@ -248,6 +247,7 @@ async def commitFiles(commitToPublish: CommitToPublish):
     partialCommit(commitToPublish,patches)
     wholeFilesToAdd,wholeFilesToRemove = getFilesToAddAndToRemove(commitToPublish,patches)
 
+    repo.index.read()
     for patch in commitToPublish.patches:
         if patch.filename in wholeFilesToAdd:
             repo.index.add(patch.filename)
