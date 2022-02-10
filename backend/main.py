@@ -266,20 +266,17 @@ async def commitFiles(commitToPublish: CommitToPublish):
             repo.index.remove(patch.filename)
         else:
             continue
-        message = ""
-        for hunk in patch.hunks:
-            message += hunk.answer
-        repo.index.write()
-        tree = repo.index.write_tree()
-        parent, ref = repo.resolve_refish(refish=repo.head.name)
-        repo.create_commit(
-            ref.name,
-            repo.default_signature,
-            repo.default_signature,
-            message,
-            tree,
-            [parent.oid],
-        )
+    repo.index.write()
+    tree = repo.index.write_tree()
+    parent, ref = repo.resolve_refish(refish=repo.head.name)
+    repo.create_commit(
+        ref.name,
+        repo.default_signature,
+        repo.default_signature,
+        commitToPublish.message,
+        tree,
+        [parent.oid],
+    )
 
 
 @app.get("/getQuestions")
