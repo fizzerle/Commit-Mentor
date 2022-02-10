@@ -261,6 +261,9 @@ export class ConventionalCommitFormComponent{
       (this.userForm.get('answers') as FormArray).push(
         this.fb.control(null)
       );
+      (this.userForm.get('belongsTo') as FormArray).push(
+        this.fb.control(null)
+      );
       this.delay(200).then(() => {
         this.focus = false
       })

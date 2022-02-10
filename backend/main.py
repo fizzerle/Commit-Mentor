@@ -194,18 +194,6 @@ def partialCommit(commitToPublish,uniDiffPatches):
             #newDiff = pygit2.Diff.parse_diff(diffToApply)
             #repo.apply(newDiff,pygit2.GIT_APPLY_LOCATION_INDEX)
 
-            repo.index.read()
-            tree = repo.index.write_tree()
-            parent, ref = repo.resolve_refish(refish=repo.head.name)
-            repo.create_commit(
-                ref.name,
-                repo.default_signature,
-                repo.default_signature,
-                hunk.answer,
-                tree,
-                [parent.oid],
-            )
-
 def getFilesToAddAndToRemove(commitToPublish,patches):
     global repo
     wholeFilesToAdd = []
