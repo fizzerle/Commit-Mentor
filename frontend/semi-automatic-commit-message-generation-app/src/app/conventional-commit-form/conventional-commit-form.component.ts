@@ -366,19 +366,28 @@ export class ConventionalCommitFormComponent implements OnInit {
     return childrenFiles
   }
 
-  commitMessageChanged() {
-    this.commitMessage = ""
-    this.commitMessage = ""+this.getEnumKeyByEnumValue(Type,this.model.type);
-    if(this.model.scope) this.commitMessage += "("+ this.model.scope +")"
-    if(this.model.breakingChanges) this.commitMessage += "!"
-    this.commitMessage += ": "
-    if(this.model.short_description) this.commitMessage += this.model.short_description + "\n"
+  /*
+  Builds the final commit message in one string from a commit object
+   */
+  buildCommitMessageStringFromCommit(commit: Commit) {
+    commit.finalMessage = ""
+    if(commit.type) commit.finalMessage = ""+this.getEnumKeyByEnumValue(Type,commit.type);
+    if(commit.scope) commit.finalMessage += "("+ commit.scope +")"
+    if(commit.breakingChanges) commit.finalMessage += "!"
+    if(commit.type || commit.scope) commit.finalMessage += ": "
+    if(commit.short_description) commit.finalMessage += commit.short_description + "\n"
 
-    if(this.model.body) this.commitMessage += this.model.body + "\n"
-    console.log(this.model.closesIssue)
-    if(this.model.closesIssue) {
-      this.commitMessage += "Closes "
-      this.model.closesIssue.split(",").forEach((id) => this.commitMessage += "#"+id+" ")
+    if(commit.body) commit.finalMessage += commit.body + "\n"
+    console.log(commit.closesIssue)
+    if(commit.closesIssue) {
+      let ids = ""
+      commit.closesIssue.split(",").forEach((id) => {
+        id = id.trim()
+        const number = Number(id);
+        if (!isNaN(number) && number !== 0) ids += "#"+id+" "
+        console.log(number)
+      })
+      if(ids.length > 0)commit.finalMessage += "Closes "+ ids
     }
   }
 
