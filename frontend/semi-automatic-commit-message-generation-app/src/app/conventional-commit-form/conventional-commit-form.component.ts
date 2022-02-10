@@ -277,7 +277,9 @@ export class ConventionalCommitFormComponent{
   }
 
   removeQuestion(index: number) {
+    console.log("Removing Question Hunk with index "+index);
     (this.userForm.get('answers') as FormArray).removeAt(index);
+    (this.userForm.get('belongsTo') as FormArray).removeAt(index);
     this.questionHunks.forEach( (item, ind) => {
       if(index === ind) this.questionHunks.splice(index,1);
     });
@@ -285,6 +287,10 @@ export class ConventionalCommitFormComponent{
 
   getQuestionFormControls(): FormControl[] {
     return (<FormControl[]> (<FormArray> this.userForm.get('answers')).controls)
+  }
+
+  getBelongsToFormControls(): FormControl[] {
+    return (<FormControl[]> (<FormArray> this.userForm.get('belongsTo')).controls)
   }
 
   send(values: [string]) {

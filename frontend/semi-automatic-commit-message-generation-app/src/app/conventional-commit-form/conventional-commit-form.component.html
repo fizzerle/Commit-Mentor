@@ -77,11 +77,22 @@
                 <mat-form-field class="noPadding" appearance="outline" style="margin-top: 1rem; display: inline-block; margin-right: 1rem">
                   <mat-label>{{questionHunks[i].question}}</mat-label>
                   <textarea matInput type="text"  cdkTextareaAutosize #autosize="cdkTextareaAutosize"cdkAutosizeMinRows="1" cdkAutosizeMaxRows="5" class="form-control"
-                            [formControl]="answer" name="answer" [focusMe]="focus" value=""></textarea>
+                            [formControl]="answer" name="answer" [focusMe]="focus" value="" ></textarea>
+                </mat-form-field>
+                or
+                <mat-form-field class="form-field-inline"  appearance="outline" >
+                  <mat-label>Is covered by message</mat-label>
+                  <mat-select
+                    [formControl]="getBelongsToFormControls()[i]" name="is covered by" [disabled]="answer.value !== '' && answer.value !== null" (selectionChange)="getBelongsToFormControls()[i].value === undefined?answer.enable():answer.disable()">
+                    <mat-option>None</mat-option>
+                    <ng-container *ngFor="let answer of getQuestionFormControls(); let j = index">
+                      <mat-option *ngIf="answer.value !== '' && answer.value !== null && i !== j" [value]="j">{{answer.value}}</mat-option>
+                    </ng-container>
+                  </mat-select>
                 </mat-form-field>
                 <button mat-raised-button="" (click)="addQuestionHunk(stepper,false)" style="margin-left: 1rem;" [class.spinner]="loading" color="primary" [disabled]="loading">Question current file more</button>
                 <button mat-raised-button="" (click)="addQuestionHunk(stepper,true)" style="margin-left: 1rem;" [class.spinner]="loading" color="primary" [disabled]="loading">Question next file</button>
-                <button mat-raised-button (click)="removeQuestion(i)" style="margin-left: 1rem;">This Question is Bad</button>
+                <!--<button mat-raised-button (click)="removeQuestion(i)" style="margin-left: 1rem;">This Question is Bad</button><-->
                 <div style="display: inline-flex; flex-direction: column; min-width: 11rem; vertical-align: middle; justify-content: center;">
                     <div style="display: inline-flex; flex-direction: row; align-items: center">
                       <div style="margin-left: 1rem; margin-right: 0.3rem;font-size: 0.8rem;">Files completed</div>
