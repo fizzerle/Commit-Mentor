@@ -299,21 +299,24 @@ export class ConventionalCommitFormComponent{
   }
 
   committing = false;
+  diffLoading = false;
   commitCode(form: any) {
     if(!form.valid) return
     this.committing = true
-    console.log("committing ", this.commitMessage)
+    console.log("committing ", this.commitPreviewMessage)
     let patches: Patch[] = []
-    this.questionHunks.forEach((questionHunk, index) => {
-        let found = patches.find((patch) => {patch.patchNumber === questionHunk.fileNumber});
-        if(found){
-          found.hunks.push(new Hunk(questionHunk.hunkNumber,this.userForm.value.answers[index]?this.userForm.value.answers[index]:""))
-        }else {
-          patches.push(new Patch(questionHunk.fileNumber,questionHunk.filePath,[new Hunk(questionHunk.hunkNumber,this.userForm.value.answers[index]?this.userForm.value.answers[index]:"")]))
-        }
+
+    this.selectedCommit.hunks.forEach((hunkNumber) => {
+      let questionHunk = this.questionHunks[hunkNumber]
+      let found = patches.find((patch) => {patch.patchNumber === questionHunk.fileNumber});
+      if(found){
+        found.hunks.push(new Hunk(questionHunk.hunkNumber,this.selectedCommit.finalMessage))
+      }else {
+        patches.push(new Patch(questionHunk.fileNumber,questionHunk.filePath,[new Hunk(questionHunk.hunkNumber,"")],))
+      }
     })
 
-    let commitToPublish = new CommitToPublish(this.commitMessage,patches)
+    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches)
     this.apiService.postCommit(commitToPublish).pipe(
       catchError((err) => {
         this.committing = false;
