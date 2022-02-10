@@ -162,15 +162,30 @@ export class ConventionalCommitFormComponent implements OnInit {
   outputHtml!: string;
   parsedDiff: DiffFile[] = [];
 
-  init() {
-
-    this.apiService.getGitDiff().subscribe((data) => {
+  getDiffFromBackend(path:string){
+    this.diffLoading = true
+    this.apiService.getGitDiff(path).pipe(
+      catchError((err) => {
+        this.committing = false;
+        if(err.status === 504) {
+          this.snackBar.open("Backend not reachable", "", {
+            duration: 2000
+          })
+        }
+        else{
+          this.snackBar.open(err.error.detail,"",{
+            duration: 2000
+          })
+        }
+        this.diffLoading = false
+        return throwError("Request had a Error" + err.detail)
+      })).subscribe((data) => {
       console.log(data)
       this.diff = data.diff
+      this.diffLoading = false
       if(data.diff === null){
         return
       }
-
       this.parsedDiff = Diff2Html.parse(data.diff, { drawFileList: true, matching: 'lines' });
       let outputHtml = Diff2Html.html(this.parsedDiff, { drawFileList: true, matching: 'lines' });
       this.outputHtml = outputHtml;
