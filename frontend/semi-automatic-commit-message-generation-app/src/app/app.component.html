@@ -1,6 +1,14 @@
-<mat-toolbar color="primary">Semi Automatic Commit Generation Tool</mat-toolbar>
+<mat-toolbar color="primary"><span>Semi Automatic Commit Generation Tool</span>
+  <span class="example-spacer"></span><span style="margin-right: 0.5rem">Path to Project:</span>
+  <mat-form-field class="filters" floatLabel="never">
+    <input matInput placeholder="e.g. C:\...\Project_Folder" [(ngModel)]="projectPath" />
+  </mat-form-field>
+  <button mat-raised-button style="margin-left: 0.4rem" (click)="updateProjectPath()">
+    Update
+  </button>
+</mat-toolbar>
 <div id="cardContainer">
- <app-conventional-commit-form></app-conventional-commit-form>
+ <app-conventional-commit-form [projectPath]="updatedProjectPath"></app-conventional-commit-form>
 </div>
 
 <router-outlet></router-outlet>

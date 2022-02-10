@@ -11,12 +11,12 @@ import {CommitToPublish} from "../model/commitToPublish";
 export class ApiService {
   constructor(private http: HttpClient, private snackBar: MatSnackBar) { }
 
-  getGitDiff() {
-    return this.http.get<any>("/api/getDiff")
+  getGitDiff(path: string) {
+    let params = new HttpParams().set("path",path);
+    return this.http.get<any>("/api/getDiff",{params:params})
   }
 
   filesToCommit(files: string[]) {
-
     return this.http.put<string>("/api/filesToCommit",{filesList: files})
   }
 
