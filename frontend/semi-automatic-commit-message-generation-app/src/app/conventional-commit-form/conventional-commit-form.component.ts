@@ -89,18 +89,14 @@ export class ConventionalCommitFormComponent{
       }
       let missingFiles = this.oldFiles.filter(path => this.filesToCommit.indexOf(path) < 0);
 
-      console.log(missingFiles)
+      console.log("missing Files", missingFiles)
       if(missingFiles.length > 0){
         console.error("OH NO SOME FILES GOT REMOVED")
         for (let file of missingFiles){
           //does there exits a hunk for that file?
           let indices = [], i;
           for(i = 0; i < this.questionHunks.length; i++){
-            let name = this.questionHunks[i].diffFile?.newName
-            console.log("hallo")
-            if(name){
-              name = this.questionHunks[i].diffFile?.oldName
-            }
+            let name = this.questionHunks[i].filePath
             if (name === file){
               indices.push(i);
             }
