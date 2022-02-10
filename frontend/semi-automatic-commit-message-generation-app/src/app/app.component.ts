@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-import * as Diff2Html from 'diff2html';
 
 @Component({
   selector: 'app-root',
@@ -9,7 +8,7 @@ import * as Diff2Html from 'diff2html';
 export class AppComponent {
   title = 'semi-automatic-commit-message-generation-app';
 
-  constructor(private apiService:ApiService, private snackBar:MatSnackBar) {
+  constructor() {
     let path = localStorage.getItem("projectPath")
     if (path != null) {
       this.projectPath = path;
