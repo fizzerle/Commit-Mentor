@@ -43,13 +43,25 @@ export class ConventionalCommitFormComponent{
   openFiles: number = 1;
   openHunks: number = 1;
   allHunksForCurrentFile: number = 1;
-  finish: boolean = false;
+  private _projectPath: string ="";
+  selectedCommit: Commit = new Commit();
+
+  @Input() set projectPath(value: string) {
+    this._projectPath = value;
+    this.getDiffFromBackend(this._projectPath);
+  }
+
+  get projectPath(){
+    return this._projectPath
+  }
 
   constructor(private fb: FormBuilder, private apiService:ApiService, private snackBar:MatSnackBar) {
     this.commitTypes =Object.values(Type);
 
     this.userForm = this.fb.group({
       answers: this.fb.array([
+      ]),
+      belongsTo: this.fb.array([
       ])
     })
 
