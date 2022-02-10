@@ -1,6 +1,59 @@
+.form-field-inline{
+  display: inline-block;
+  margin-left: 1rem;
+}
+
 mat-form-field {
   width: 30rem;
   display: block;
+}
+
+.selectedCommitBox.commitBoxFinished{
+  background: green;
+}
+
+.commitBox{
+  position: relative;
+  margin: 0.5rem;
+  padding: 0.5rem;
+  border: thin solid rgb(0, 0, 0,0.12);
+  height: 5rem;
+  border-radius: 0.4rem ;
+  transition: box-shadow .3s;
+}
+
+.commitBox.commitBoxFinished{
+  border: thin solid green;
+}
+
+.commitBox:hover {
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(33,33,33,.4);
+  background: darkgray;
+  color:white
+}
+
+.commitBox.commitBoxFinished:hover {
+  background: green;
+}
+
+.selectedCommitBox{
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(33,33,33,.4);
+  background: darkgray;
+  color:white
+}
+
+.commitStatusIcon {
+  float: right;
+}
+
+.hunkInfo {
+  float: left;
+}
+
+.commitMessageText{
+  overflow: hidden; height: 3.8rem;
 }
 
 .noPadding {padding: 0}

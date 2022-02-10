@@ -121,93 +121,120 @@
     </mat-step>
     <mat-step label="Finish Message">
       <div style="display: flex; align-items: stretch;">
-        <div style="width: 50%;">
-          <form (ngSubmit)="commitCode(commitForm2)" #commitForm2="ngForm">
-            <mat-form-field class="noPadding"  appearance="outline">
-              <mat-label>Type</mat-label>
-              <mat-select
-                required
-                [(ngModel)]="model.type" name="type" (ngModelChange)="commitMessageChanged()">
-                <mat-option *ngFor="let type of commitTypes" [value]="type">{{type}}</mat-option>
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field class="noPadding" appearance="outline">
-              <mat-label>Scope</mat-label>
-              <input matInput type="text"  class="form-control"
-                     [(ngModel)]="model.scope" name="scope" (ngModelChange)="commitMessageChanged()">
-            </mat-form-field>
-            <mat-form-field class="noPadding" appearance="outline">
-              <mat-label>Short Description</mat-label>
-              <input matInput type="text"  class="form-control" required minlength="1" name="shortDescription"
-                     [(ngModel)]="model.short_description" #commitDescription="ngModel" (ngModelChange)="commitMessageChanged();">
-            </mat-form-field>
-            <div *ngIf="commitDescriptionLength(model.type,model.scope,model.short_description,model.breakingChanges) > 70" style="color: orange">
-                The commit message header should have less than 70 characters, because many commit tools only show 70
-              characters.<br>Your header has {{commitDescriptionLength(model.type,model.scope,model.short_description,model.breakingChanges)}} Characters<br> Please make the header shorter and add further information to the body.
-            </div>
-            <mat-form-field  appearance="outline">
-              <mat-label>Review Commit Message</mat-label>
-              <textarea matInput type="text" rows="20" cols="70" name="commit_message" [(ngModel)]="model.body" (ngModelChange)="commitMessageChanged()"></textarea>
-            </mat-form-field>
-            <mat-form-field class="noPadding" appearance="outline">
-              <mat-label>Closes Issue With ID (Split multiple Issues with ,)</mat-label>
-              <input matInput type="text"  class="form-control" pattern="(\d+)(,\s*\d+)*"
-                     #issueIDs="ngModel" (ngModelChange)="commitMessageChanged()"
-                     [(ngModel)]="model.closesIssue" name="closes_issue">
-            </mat-form-field>
-            <p>
-              <mat-checkbox [(ngModel)]="model.breakingChanges"(ngModelChange)="commitMessageChanged()" name="breaking Change">Breaking Change</mat-checkbox>
-            </p>
-            <p style="color: red" *ngIf="model.breakingChanges"><b>The commit short description (uppermost field) shall be used to describe the breaking change</b></p>
+        <div style="margin-right: 2rem;width: 33%">
+          <h2>You got {{commits.length}} atomic commit<span *ngIf="commits.length != 1">s</span>:</h2>
+          <div *ngFor="let commit of commits" class="commitBox" [class.selectedCommitBox]="selectedCommit === commit" [class.commitBoxFinished]="commit.commited" (click)="onCommitSelection(commit)">
+            <div class="commitMessageText"><span *ngIf="commit.type">{{getEnumKeyByEnumValue(Type, commit.type)}}: </span>{{commit.short_description}}</div>
             <div>
-              <button mat-raised-button [disabled]="committing" >Commit</button>
+              <span class="hunkInfo">{{commit.hunks.length}} Hunk<span *ngIf="commit.hunks.length != 1">s</span></span>
+              <mat-icon *ngIf="commit.commited" class="commitStatusIcon">done</mat-icon>
+              <mat-icon *ngIf="!commit.commited" class="commitStatusIcon">pending</mat-icon>
             </div>
-          </form>
+          </div>
         </div>
-        <div style="margin: 4rem">
-          <h2>Commit Message Preview</h2>
-          <p style="white-space: pre-line;margin-top: 1rem;font-size: 1.2rem; margin-bottom: 4rem">
-            {{commitMessage}}
-          </p>
+        <div style="width: 67%;display: flex;flex-direction: column;">
+          <div style="display: flex; align-items: stretch;">
+            <div style="width: 50%;display: flex;justify-content: center">
+              <form (ngSubmit)="commitCode(commitForm2)" #commitForm2="ngForm">
+                <mat-form-field class="noPadding"  appearance="outline">
+                  <mat-label>Type</mat-label>
+                  <mat-select
+                    required
+                    [(ngModel)]="selectedCommit.type" name="type" (ngModelChange)="buildCommitMessageStringFromCommit(selectedCommit)">
+                    <mat-option *ngFor="let type of commitTypes" [value]="type">{{type}}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field class="noPadding" appearance="outline">
+                  <mat-label>Scope</mat-label>
+                  <input matInput type="text" class="form-control"
+                         [(ngModel)]="selectedCommit.scope" name="scope" (ngModelChange)="buildCommitMessageStringFromCommit(selectedCommit)">
+                </mat-form-field>
+                <mat-form-field class="noPadding" appearance="outline">
+                  <mat-label>Short Description</mat-label>
+                  <input matInput type="text" class="form-control" required minlength="1" name="shortDescription"
+                         [(ngModel)]="selectedCommit.short_description" #commitDescription="ngModel" (ngModelChange)="buildCommitMessageStringFromCommit(selectedCommit);">
+                </mat-form-field>
+                <div *ngIf="commitDescriptionLength(selectedCommit.type,selectedCommit.scope,selectedCommit.short_description,selectedCommit.breakingChanges) > 70" style="color: orange">
+                  The commit message header should have less than 70 characters, because many commit tools only show 70
+                  characters.<br>Your header has {{commitDescriptionLength(selectedCommit.type,selectedCommit.scope,selectedCommit.short_description,selectedCommit.breakingChanges)}} Characters<br> Please make the header shorter and add further information to the body.
+                </div>
+                <mat-form-field  appearance="outline">
+                  <mat-label>Review Commit Message</mat-label>
+                  <textarea matInput type="text" rows="20" cols="70" name="commit_message" [(ngModel)]="selectedCommit.body" (ngModelChange)="buildCommitMessageStringFromCommit(selectedCommit)"></textarea>
+                </mat-form-field>
+                <mat-form-field class="noPadding" appearance="outline">
+                  <mat-label>Closes Issue With ID (Split multiple Issues with ,)</mat-label>
+                  <input matInput type="text" [(ngModel)]="selectedCommit.closesIssue" (ngModelChange)="buildCommitMessageStringFromCommit(selectedCommit)" pattern="(\d+)(,\s*\d+)*" name="closes_issue">
+                </mat-form-field>
+                <p>
+                  <mat-checkbox [(ngModel)]="selectedCommit.breakingChanges" (ngModelChange)="buildCommitMessageStringFromCommit(selectedCommit)" name="breaking Change">Breaking Change</mat-checkbox>
+                </p>
+                <p style="color: red; width: 30rem" *ngIf="selectedCommit.breakingChanges"><b>The commit short description (uppermost field) shall be used to describe the breaking change</b></p>
+                <div>
+                  <button mat-raised-button [disabled]="committing || selectedCommit.commited" >Commit</button>
+                </div>
+              </form>
+            </div>
+            <div style="margin-left: 2rem;width: 50%">
+              <h2>Commit Message Preview</h2>
+              <p style="white-space: pre-line;margin-top: 1rem;font-size: 1.2rem; margin-bottom: 4rem">
+                {{selectedCommit.finalMessage}}
+              </p>
 
-          <h2>Files Included in the Commit:</h2>
-          <span>
-        <mat-tree [dataSource]="nestedDataSource" [treeControl]="nestedTreeControl" class="example-tree" style="margin-bottom: 1rem">
-          <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle matTreeNodePadding>
-            <li>
-              <button mat-icon-button disabled></button>
-              <mat-checkbox class="checklist-branch-node"
-                            [checked]="node.selected"
-                            [disabled]="true"
-                            (change)="leafNodeSelect(node)"></mat-checkbox><div style="cursor: pointer; display: inline-flex" >{{node.path}}</div>
-            </li>
-          </mat-tree-node>
-
-            <mat-nested-tree-node *matTreeNodeDef="let node; when: hasNestedChild" >
+              <h2>Files Included in the Commit:</h2>
+              <span>
+          <mat-tree [dataSource]="nestedDataSource" [treeControl]="nestedTreeControl" class="example-tree" style="margin-bottom: 1rem">
+            <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle matTreeNodePadding>
               <li>
-              <div class="mat-tree-node">
-                <button mat-icon-button matTreeNodeToggle [attr.aria-label]="'Toggle ' + node.filename">
-                  <mat-icon class="mat-icon-rtl-mirror">
-                    {{nestedTreeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
-                  </mat-icon>
-                </button>
+                <button mat-icon-button disabled></button>
                 <mat-checkbox class="checklist-branch-node"
                               [checked]="node.selected"
                               [disabled]="true"
-                              [indeterminate]="descendantsPartiallySelected(node)"
-                              (change)="checkAllChildren(node,!node.selected)"></mat-checkbox><span>{{node.path}}</span>
-              </div>
-                <ul>
-                  <div [class.example-tree-invisible]="!nestedTreeControl.isExpanded(node)" role="group">
-                    <ng-container matTreeNodeOutlet></ng-container>
-                  </div>
-                </ul>
+                              (change)="leafNodeSelect(node)"></mat-checkbox><div style="cursor: pointer; display: inline-flex" >{{node.path}}</div>
               </li>
-            </mat-nested-tree-node>
+            </mat-tree-node>
 
-        </mat-tree>
-          </span>
+              <mat-nested-tree-node *matTreeNodeDef="let node; when: hasNestedChild" >
+                <li>
+                <div class="mat-tree-node">
+                  <button mat-icon-button matTreeNodeToggle [attr.aria-label]="'Toggle ' + node.filename">
+                    <mat-icon class="mat-icon-rtl-mirror">
+                      {{nestedTreeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
+                    </mat-icon>
+                  </button>
+                  <mat-checkbox class="checklist-branch-node"
+                                [checked]="node.selected"
+                                [disabled]="true"
+                                [indeterminate]="descendantsPartiallySelected(node)"
+                                (change)="checkAllChildren(node,!node.selected)"></mat-checkbox><span>{{node.path}}</span>
+                </div>
+                  <ul>
+                    <div [class.example-tree-invisible]="!nestedTreeControl.isExpanded(node)" role="group">
+                      <ng-container matTreeNodeOutlet></ng-container>
+                    </div>
+                  </ul>
+                </li>
+              </mat-nested-tree-node>
+
+          </mat-tree>
+            </span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: stretch; margin-top: 1rem">
+            <mat-accordion style="max-width: 100%">
+              <mat-expansion-panel >
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    Show me all the Hunks for this Commit
+                  </mat-panel-title>
+                </mat-expansion-panel-header>
+                <div style="max-width: 100%" *ngFor="let hunkIndex of selectedCommit.hunks" [innerHtml]="questionHunks[hunkIndex].diff"></div>
+              </mat-expansion-panel>
+            </mat-accordion>
+
+          </div>
         </div>
+
       </div>
     </mat-step>
   </mat-stepper>
