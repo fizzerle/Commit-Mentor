@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, Input, OnInit} from '@angular/core';
 import {Commit} from "../model/commit";
 import {Type} from "../model/type";
 import {StepperSelectionEvent} from "@angular/cdk/stepper";
@@ -29,9 +29,10 @@ export class FileNode {
   templateUrl: './conventional-commit-form.component.html',
   styleUrls: ['./conventional-commit-form.component.scss']
 })
-export class ConventionalCommitFormComponent implements OnInit {
+export class ConventionalCommitFormComponent{
+  Type= Type
   commitTypes: string[];
-  commitMessage = "";
+  commitPreviewMessage = "";
   diff!: any;
   loading = false;
   trie = new trie<string>()
@@ -56,29 +57,19 @@ export class ConventionalCommitFormComponent implements OnInit {
     this.nestedDataSource = new MatTreeNestedDataSource();
 
     this.dataChange.subscribe(data => this.nestedDataSource.data = data);
-    this.init();
   }
 
   private _getChildren = (node: trie_node) => { return observableOf(node.getChildren()); };
 
   hasNestedChild = (_: number, nodeData: trie_node) => {return !(nodeData.children.size === 0); };
 
-  ngOnInit(): void {
-  }
-
-
-
-  model = new Commit();
+  commits: Commit[] = []
   filesToCommit: string[] = []
-  oldAutomaticAddedLines: string = ""
-
   submitted = false;
 
   oldFiles: string[] = []
 
-  onSubmit() { this.submitted = true; }
-
-  selectionChange(stepperEvent: StepperSelectionEvent){
+  stepperSelectionChanged(stepperEvent: StepperSelectionEvent){
     if(stepperEvent.selectedIndex === 1) {
       this.filesToCommit = []
       for(let node of this.fileNamesOfSelectedLeafNodes(this.trie.root)){
@@ -110,7 +101,7 @@ export class ConventionalCommitFormComponent implements OnInit {
         }
       }
       this.oldFiles = this.filesToCommit;
-      console.log(this.questionHunks)
+      console.log("Hunks after removal",this.questionHunks)
       this.apiService.filesToCommit(this.filesToCommit).subscribe(() => {
         if(this.questionHunks.length == 0) this.addQuestionHunk(undefined,false)
       })
@@ -329,13 +320,27 @@ export class ConventionalCommitFormComponent implements OnInit {
         return throwError("Request had a Error" + err)
     }))
       .subscribe(() => {
-      this.snackBar.open("Congratulations! Your commit was successful! The page will reload now to prepare for your next commit.","",{
+        this.committing = false;
+        this.selectedCommit.commited = true
+      this.snackBar.open("Congratulations! Your commit was successful!","",{
         duration: 2000
       })
-      this.delay(3000).then(() => {
-        window.location.reload()
-      })
+        if(this.allCommitsCommited()){
+          this.delay(2000).then(() => {
+            this.snackBar.open("You are finished with all commits. The page will reload now to prepare for your next commits.","",{
+              duration: 2000
+            })
+            this.delay(3000).then(() => {
+              window.location.reload()
+            })
+          })
+        }
     })
+  }
+
+  allCommitsCommited (){
+    let numberOfCommitedCommits =  this.commits.filter(commit => commit.commited === true).length
+    return numberOfCommitedCommits === this.commits.length
   }
 
   fileClicked(node: trie_node) {
