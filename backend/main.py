@@ -21,6 +21,9 @@ app = FastAPI()
 
 diff = None
 repo = None
+diffClean = None
+
+projectPath = ""
 
 
 class Commit(BaseModel):
@@ -244,10 +247,9 @@ async def commitFiles(commitToPublish: CommitToPublish):
     global diff
     global files
     global repo
+    global diffClean
 
-    diff = repo.diff('HEAD', cached=False)
-    patches = PatchSet.from_string(diff.patch)
-    status = repo.status()
+    patches = PatchSet.from_string(diffClean.patch)
 
     print(commitToPublish)
 
