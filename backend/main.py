@@ -68,6 +68,8 @@ def orderPatches(diff):
         allFiles.append(path)
         for idx, hunk in enumerate(patch.hunks):
             hunks.append((idx, len(hunk.lines)))
+        if(len(patch.hunks)) == 0:
+            hunks.append((0, 0))
         newOrderedPatches.append([oldId, hunks, path])
     orderedPatches = newOrderedPatches
 
