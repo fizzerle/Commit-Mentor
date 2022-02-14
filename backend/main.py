@@ -154,7 +154,7 @@ async def getDiff(path: str):
 
     unstageAllFiles()
     
-    diff = repo.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT+pygit2.GIT_DIFF_SHOW_BINARY)
+    diff = repo.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT)
     diffClean = repo.diff('HEAD', cached=False)
     orderPatches(diff)
 
