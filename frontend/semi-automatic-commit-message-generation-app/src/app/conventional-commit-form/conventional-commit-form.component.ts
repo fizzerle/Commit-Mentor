@@ -1,6 +1,6 @@
-import {Component, Input, OnInit} from '@angular/core';
+import {Component, ElementRef, Input, OnInit, ViewChild} from '@angular/core';
 import {Commit} from "../model/commit";
-import {Type} from "../model/type";
+import {CommitType} from "../model/CommitType";
 import {StepperSelectionEvent} from "@angular/cdk/stepper";
 import * as Diff2Html from "diff2html";
 import {Form, FormArray, FormBuilder, FormControl, FormGroup} from "@angular/forms";
@@ -30,7 +30,7 @@ export class FileNode {
   styleUrls: ['./conventional-commit-form.component.scss']
 })
 export class ConventionalCommitFormComponent{
-  Type= Type
+  Type= CommitType
   commitTypes: string[];
   commitPreviewMessage = "";
   diff!: any;
@@ -45,6 +45,7 @@ export class ConventionalCommitFormComponent{
   allHunksForCurrentFile: number = 1;
   private _projectPath: string ="";
   selectedCommit: Commit = new Commit();
+  questionsForSelectedCommitType: string[] = [];
 
   @Input() set projectPath(value: string) {
     this._projectPath = value;
@@ -56,7 +57,7 @@ export class ConventionalCommitFormComponent{
   }
 
   constructor(private fb: FormBuilder, private apiService:ApiService, private snackBar:MatSnackBar) {
-    this.commitTypes =Object.values(Type);
+    this.commitTypes =Object.values(CommitType);
 
     this.userForm = this.fb.group({
       answers: this.fb.array([
@@ -314,7 +315,47 @@ export class ConventionalCommitFormComponent{
 
   committing = false;
   diffLoading = false;
+
+  checkMessage() {
+    console.log("committing ", this.commitPreviewMessage)
+    let patches: Patch[] = []
+
+    this.selectedCommit.hunks.forEach((hunkNumber) => {
+      let questionHunk = this.questionHunks[hunkNumber]
+      let found = patches.find((patch) => {patch.patchNumber === questionHunk.fileNumber});
+      if(found){
+        found.hunks.push(new Hunk(questionHunk.hunkNumber,this.selectedCommit.finalMessage))
+      }else {
+        patches.push(new Patch(questionHunk.fileNumber,questionHunk.filePath,[new Hunk(questionHunk.hunkNumber,"")],))
+      }
+    })
+
+    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches)
+    this.apiService.checkMessage(commitToPublish).pipe(
+      catchError((err) => {
+        this.snackBar.open("Request had a Error," + err,"",{
+          duration: 2000
+        })
+        return throwError("Request had a Error" + err)
+      }))
+      .subscribe((messageScore) => {
+        if(messageScore.body !== null){
+          this.calculateMessageStrength(messageScore.body)
+        }
+      })
+  }
+
+  calculateMessageStrength(messageScore: number){
+    if(messageScore <= 0) this.messageStrength = 0;
+    if(messageScore > 0 && messageScore <= 1) this.messageStrength = 1;
+    if(messageScore > 1 && messageScore <= 2) this.messageStrength = 2;
+    if(messageScore > 2 && messageScore <= 2.5) this.messageStrength = 3;
+    if(messageScore > 2.5 ) this.messageStrength = 4;
+  }
+
   commitCode(form: any) {
+    let type = CommitType.fix
+    let dict = {type: "test"}
     if(!form.valid) return
     this.committing = true
     console.log("committing ", this.commitPreviewMessage)
@@ -411,7 +452,7 @@ export class ConventionalCommitFormComponent{
    */
   buildCommitMessageStringFromCommit(commit: Commit) {
     commit.finalMessage = ""
-    if(commit.type) commit.finalMessage = ""+this.getEnumKeyByEnumValue(Type,commit.type);
+    if(commit.type) commit.finalMessage = ""+this.getEnumKeyByEnumValue(CommitType,commit.type);
     if(commit.scope) commit.finalMessage += "("+ commit.scope +")"
     if(commit.breakingChanges) commit.finalMessage += "!"
     if(commit.type || commit.scope) commit.finalMessage += ": "
