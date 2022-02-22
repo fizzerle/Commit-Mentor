@@ -139,3 +139,5 @@ Thumbs.db
 datasetGeneration/build/*
 backend/__pycache__
 __pycache__
+
+*.tar.gz
