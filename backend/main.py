@@ -474,6 +474,44 @@ async def getQuestions(message: str = None):
 
     test_model(X)
 
+@app.post("/checkMessage")
+async def checkMessage(commitToPublish: CommitToPublish):
+    global tokenizer
+    #message = "Issue <issue_link> ; when arrays differ in length, say so, but go ahead and find the first difference as usual to ease diagnosis"
+    message = commitToPublish.message
+    print(message)
+    global diffClean
+
+    patches = PatchSet.from_string(diffClean.patch)
+
+    print(commitToPublish)
+    uniDiffPatches = []
+    filePaths = []
+    for patch in commitToPublish.patches:
+
+        #searching is needed because unidiff parsing changes the order
+        for unidiffPat in patches:
+            if patch.filename == unidiffPat.target_file[2:]:
+                uniDiffPatches.append(unidiffPat)
+        filePaths.append(patch.filename)
+    message = preprocessMessageForModel(message,patches,filePaths)
+
+    message_tokens = tokenizer(message,
+                                padding=True,
+                                truncation=True,
+                                max_length=200,
+                                return_tensors='pt')
+    X = message_tokens['input_ids']
+
+    if (USE_CUDA):
+        print('Run on GPU.')
+    else:
+        print('No GPU available, run on CPU.')
+
+    return test_model(X)
+
+
+
 
 @app.on_event("startup")
 async def setupTokenizerAndModel():
