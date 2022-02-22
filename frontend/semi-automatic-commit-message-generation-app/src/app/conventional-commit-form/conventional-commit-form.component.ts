@@ -472,5 +472,61 @@ export class ConventionalCommitFormComponent{
 
   onCommitSelection(commit: Commit) {
     this.selectedCommit = commit;
+    this.commitTypeChanged()
+    this.checkMessage()
+  }
+
+  private defaultColours = [
+    'darkred',
+    'orangered',
+    'orange',
+    'yellowgreen',
+    'green'
+  ];
+
+  messageStrength = 0
+  feedback = {} as { suggestions: string[]; warning: string } ;
+
+  getMeterFillColor(strength: number) {
+    if (!strength || strength < 0 || strength > 5) {
+      return this.defaultColours[0];
+    }
+
+    return this.defaultColours[strength]
+  }
+
+  questionsForCommitType: {[commitype: string] : string[]} = {
+    "fix":
+      ["Describe the error scenario?","Did some tool urge you to fix errors?",
+        "What were the shortcomings of the implementation?",
+        "How does the proposed code solve the defect?",
+        "Did some tool urge you to fix errors?",
+        "Did a change in the runtime or development environment change?"],
+    "feat":
+      ["Has this commit relation to prior commits?",
+        "Describe how this change makes a future change easier to land",
+        "What improvement does this change bring? Describe the before and after"],
+    "chore":
+      ["Why is this change required?"],
+    "docs":
+      ["Did some tool urge you to fix errors?"],
+    "style":
+      ["Did some tool urge you to fix errors?"],
+    "refactor":
+      ["Was the code not used anymore?",
+        "What future changes in the code get easier through this change?"],
+    "perf":
+      ["Why is the performance improvement needed?"],
+    "test":
+      []
+  }
+
+  commitTypeChanged() {
+    let selectedType = this.getEnumKeyByEnumValue(CommitType,this.selectedCommit.type)
+    if(selectedType !== null){
+      this.questionsForSelectedCommitType = this.questionsForCommitType[selectedType]
+    } else{
+      this.questionsForSelectedCommitType = []
+    }
   }
 }
