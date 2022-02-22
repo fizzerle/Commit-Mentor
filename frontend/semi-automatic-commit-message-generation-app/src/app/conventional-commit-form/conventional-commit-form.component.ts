@@ -9,9 +9,9 @@ import {MatStepper} from "@angular/material/stepper";
 import {trie, trie_node} from "../util/Trie";
 import {MatTreeNestedDataSource} from "@angular/material/tree";
 import {NestedTreeControl} from "@angular/cdk/tree";
-import {BehaviorSubject, Observable, of as observableOf, throwError} from 'rxjs';
+import {BehaviorSubject, interval, Observable, of as observableOf, Subject, throwError} from 'rxjs';
 import {DiffFile} from "diff2html/lib/types";
-import {catchError} from "rxjs/operators";
+import {catchError, debounce, debounceTime} from "rxjs/operators";
 import {MatSnackBar} from "@angular/material/snack-bar";
 import {QuestionHunk} from "../model/QuestionHunk";
 import {CommitToPublish} from "../model/commitToPublish";
@@ -70,6 +70,12 @@ export class ConventionalCommitFormComponent{
     this.nestedDataSource = new MatTreeNestedDataSource();
 
     this.dataChange.subscribe(data => this.nestedDataSource.data = data);
+    this.modelChanged
+      .pipe(
+        debounceTime(1000))
+      .subscribe(() => {
+        this.checkMessage()
+      })
   }
 
   private _getChildren = (node: trie_node) => { return observableOf(node.getChildren()); };
@@ -470,16 +476,19 @@ export class ConventionalCommitFormComponent{
       })
       if(ids.length > 0)commit.finalMessage += "Closes "+ ids
     }
+    this.modelChanged.next();
+    this.commitTypeChanged()
   }
+  modelChanged = new Subject<string>();
 
-  getTypeLength(modelType: Type|undefined): number {
-    let desc = this.getEnumKeyByEnumValue(Type,modelType)
+  getTypeLength(modelType: CommitType|undefined): number {
+    let desc = this.getEnumKeyByEnumValue(CommitType,modelType)
     if(desc === null) return 0
     return desc.length
   }
 
-  commitDescriptionLength(type: Type|undefined, scope: string|undefined, short_description: string|undefined, breaking_changes: boolean|undefined) {
-    let typeFull = this.getEnumKeyByEnumValue(Type,type)
+  commitDescriptionLength(type: CommitType|undefined, scope: string|undefined, short_description: string|undefined, breaking_changes: boolean|undefined) {
+    let typeFull = this.getEnumKeyByEnumValue(CommitType,type)
     let typeLength = 0
     let scopeLength = 0
     let decriptionLength = 0
