@@ -44,6 +44,19 @@ class CommitToPublish(BaseModel):
     message: str
     patches: List[Patch]
 
+class QuestionAnswerPair(BaseModel):
+    question: str
+    answer: str
+class DiaryQuestions(BaseModel):
+    date: str
+    numberOfCommits: int
+    secondsSpentCommiting: int
+    secondsSpentAnsweringHunks: int
+    secondsSpentAddingTheRationale: int
+    commitMessageLength: str
+    diffLength: str
+    issuesLinked: bool
+    answers: List[QuestionAnswerPair]
 
 # order patches and hunks by most changes
 
