@@ -1,4 +1,4 @@
-export enum Type {
+export enum CommitType {
     fix = "A bug fix",
     feat = "A new feature",
     chore = "Changes to build tools,auxiliary tools,libraries",

@@ -1,4 +1,5 @@
 from email import message
+from fileinput import filename
 from fastapi import FastAPI, HTTPException
 import pygit2
 from typing import List,Dict,Tuple
@@ -8,7 +9,9 @@ from unidiff import PatchSet
 import pkg_resources
 import os
 import subprocess
-import time
+import re
+from allennlp.predictors import Predictor
+from allennlp.models.archival import load_archive
 
 
 orderedPatches = []
@@ -534,7 +537,10 @@ async def setupTokenizerAndModel():
     global h
     global net
     global tokenizer
+    global predictor
     model_config = ModelConfig()
+    predictor = Predictor.from_path("./tools/elmo-constituency-parser-2020.02.10.tar.gz")
+    #predictor = pretrained.load_predictor("structured-prediction-constituency-parser")
     tokenizer = BertTokenizer.from_pretrained(model_config.bert_path)
     if model_config.labelSelected == 2:
         print("Why Message")

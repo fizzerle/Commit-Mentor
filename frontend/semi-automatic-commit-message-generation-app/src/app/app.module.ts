@@ -27,6 +27,7 @@ import {MatIconModule} from "@angular/material/icon";
 import {FocusDirective} from "./conventional-commit-form/focus.directive";
 import {MatChipsModule} from "@angular/material/chips";
 import {MatProgressSpinnerModule} from "@angular/material/progress-spinner";
+import {MatRadioButton, MatRadioModule} from "@angular/material/radio";
 
 @NgModule({
   declarations: [
@@ -41,6 +42,7 @@ import {MatProgressSpinnerModule} from "@angular/material/progress-spinner";
     MatProgressSpinnerModule,
     AppRoutingModule,
     HttpClientModule,
+    MatRadioModule,
     BrowserAnimationsModule,
     MatToolbarModule,
     FormsModule,
