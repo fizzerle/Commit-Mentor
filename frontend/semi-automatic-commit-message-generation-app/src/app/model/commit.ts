@@ -1,10 +1,10 @@
-import {Type} from "./type";
+import {CommitType} from "./CommitType";
 import {QuestionHunk} from "./QuestionHunk";
 
 export class Commit {
 
     constructor(
-      public type?: Type,
+      public type?: CommitType,
       public scope?: string,
       public short_description?: string,
       public body: string = "",

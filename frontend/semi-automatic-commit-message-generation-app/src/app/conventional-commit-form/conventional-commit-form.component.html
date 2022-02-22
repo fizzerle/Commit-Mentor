@@ -240,4 +240,81 @@
 
       </div>
     </mat-step>
+   <mat-step label="Diary">
+     <h2>Diary Questions</h2>
+
+     <div style="margin-bottom: 1rem">
+       <h3>How useful where the hints what should be included in the message?</h3>
+       <span style="margin-right: 1rem">Not very useful</span>
+       <mat-radio-group aria-label="How useful where the hints what should be included in the message?">
+         <mat-radio-button value="0"></mat-radio-button>
+         <mat-radio-button value="1"></mat-radio-button>
+         <mat-radio-button value="2"></mat-radio-button>
+         <mat-radio-button value="3"></mat-radio-button>
+         <mat-radio-button value="4"></mat-radio-button>
+       </mat-radio-group>
+       <span>Very useful</span>
+     </div>
+     <div style="margin-bottom: 1rem">
+       <h3>How useful was the message quality signal for this commit?</h3>
+       <span style="margin-right: 1rem">Not very useful</span>
+       <mat-radio-group aria-label="Question 2">
+         <mat-radio-button value="0"></mat-radio-button>
+         <mat-radio-button value="1"></mat-radio-button>
+         <mat-radio-button value="2"></mat-radio-button>
+         <mat-radio-button value="3"></mat-radio-button>
+         <mat-radio-button value="4"></mat-radio-button>
+       </mat-radio-group>
+       <span>Very useful</span>
+     </div>
+     <div style="margin-bottom: 1rem">
+       <h3>Did the tool help you to describe the rationale behind the commit?</h3>
+       <span style="margin-right: 1rem">Not at all</span>
+       <mat-radio-group aria-label="Question 2">
+         <mat-radio-button value="0"></mat-radio-button>
+         <mat-radio-button value="1"></mat-radio-button>
+         <mat-radio-button value="2"></mat-radio-button>
+         <mat-radio-button value="3"></mat-radio-button>
+         <mat-radio-button value="4"></mat-radio-button>
+       </mat-radio-group>
+       <span>Yes, totally</span>
+     </div>
+     <div style="margin-bottom: 1rem">
+       <h3>Did the tool help you to describe WHAT changed?</h3>
+       <span style="margin-right: 1rem">Not at all</span>
+       <mat-radio-group aria-label="Question 2">
+         <mat-radio-button value="0"></mat-radio-button>
+         <mat-radio-button value="1"></mat-radio-button>
+         <mat-radio-button value="2"></mat-radio-button>
+         <mat-radio-button value="3"></mat-radio-button>
+         <mat-radio-button value="4"></mat-radio-button>
+       </mat-radio-group>
+       <span>Yes, totally</span>
+     </div>
+     <div style="margin-bottom: 1rem">
+       <h3>Have you found a issue while reviewing your code and had to go to fix it first?</h3>
+       <mat-radio-group aria-label="Question 2">
+         <mat-radio-button value="0">Yes</mat-radio-button>
+         <mat-radio-button value="1">No</mat-radio-button>
+       </mat-radio-group>
+     </div>
+     <div style="margin-bottom: 1rem">
+       <h3>Did the tool help you to untangle the commit?</h3>
+       <mat-radio-group aria-label="Question 2">
+         <mat-radio-button value="0">Yes</mat-radio-button>
+         <mat-radio-button value="1">No</mat-radio-button>
+       </mat-radio-group>
+     </div>
+
+     <div style="margin-bottom: 1rem">
+       <h3>How was your experience using the tool for this commit?</h3>
+       <mat-form-field class="noPadding" appearance="outline">
+         <mat-label>How was your experience using the tool for this commit?</mat-label>
+         <textarea matInput type="text"  cdkTextareaAutosize #autosize="cdkTextareaAutosize"cdkAutosizeMinRows="3" cdkAutosizeMaxRows="5" class="form-control" name="answer" [focusMe]="focus" value="" ></textarea>
+       </mat-form-field>
+     </div>
+
+     <button mat-raised-button>Save diary entry</button>
+
+   </mat-step>
   </mat-stepper>
