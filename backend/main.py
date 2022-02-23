@@ -260,23 +260,6 @@ def getFilesToAddAndToRemove(commitToPublish,patches):
                 wholeFilesToRemove.append(patch.filename)
             continue
     return (wholeFilesToAdd,wholeFilesToRemove)
-def unstageAllFiles():
-    global repo
-    global files
-    # unstage all files
-    for (path,mode) in files:
-        if(mode == "DELETED"):
-            obj = repo.revparse_single('HEAD').tree[path]  # Get object from db
-            repo.index.add(pygit2.IndexEntry(
-            path, obj.oid, obj.filemode))
-        if(path in repo.index):
-            repo.index.remove(path)
-            # Restore object from db
-            if(path in repo.revparse_single('HEAD').tree):
-                obj = repo.revparse_single('HEAD').tree[path]  # Get object from db
-                repo.index.add(pygit2.IndexEntry(
-                path, obj.oid, obj.filemode))  # Add to index
-    repo.index.write()
 
 @app.post("/commit")
 async def commitFiles(commitToPublish: CommitToPublish):
