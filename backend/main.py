@@ -223,12 +223,16 @@ def partialCommit(commitToPublish,uniDiffPatches):
         diffToApply += str(uniDiffPatch.patch_info) + source + target
 
         for hunk in patch.hunks:
-            print("hunkNumber", hunk.hunkNumber)
             hunkPatch = diffToApply + str(uniDiffPatch[hunk.hunkNumber])
-            print("hunk", hunk)
-            print("hunkPatch generated:", hunkPatch)
+            logging.info("Hunk that gets applied %s", hunk)
+            # This is need because: https://stackoverflow.com/questions/10785131/line-endings-in-python
             hunkPatch = hunkPatch.replace("\r\n", "\n").replace("\r", "\n")
-            #https://stackoverflow.com/questions/10785131/line-endings-in-python
+
+            '''
+            this is a workaround because pygit2 apply method has a bug
+            so i have to write the diff to a file and then call git via a subprocess to apply the diff
+            in the file partial log there can be found the error messages of git, if git could not apply the diff
+            '''
             with open("partial.patch", "w+", encoding='utf-8', newline="") as text_file:
                 text_file.write(hunkPatch)
 
