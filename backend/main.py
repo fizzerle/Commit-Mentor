@@ -1,18 +1,15 @@
-from email import message
 from fileinput import filename
 from fastapi import FastAPI, HTTPException
 import pygit2
-from typing import List,Dict,Tuple
+from typing import List
 from pydantic import BaseModel
 import copy
 from unidiff import PatchSet
-import pkg_resources
 import os
 import subprocess
 import re
 from allennlp.predictors import Predictor
-from allennlp.models.archival import load_archive
-
+import logging
 
 orderedPatches = []
 openPatches = []
@@ -240,22 +237,21 @@ def partialCommit(commitToPublish,uniDiffPatches):
                                     stdout=text_file, 
                                     stderr=text_file)
                 process.communicate()
+            
+            '''
+            TODO: this would the more elegant solution to directly apply the diff in pygit2, however somhow this does not work
+            newDiff = pygit2.Diff.parse_diff(diffToApply)
+            repo.apply(newDiff,pygit2.GIT_APPLY_LOCATION_INDEX)
+            '''
 
-            #TODO: this would the more elegant solution to directly apply the diff in pygit2, however somhow this does not work
-            #newDiff = pygit2.Diff.parse_diff(diffToApply)
-            #repo.apply(newDiff,pygit2.GIT_APPLY_LOCATION_INDEX)
-
+'''
+returns the filenames of the files that are new or got deleted
+'''
 def getFilesToAddAndToRemove(commitToPublish,patches):
     global repo
     wholeFilesToAdd = []
     wholeFilesToRemove = []
     for patch in commitToPublish.patches:
-        diffToApply = ""
-        uniDiffPatch = None
-        #searching is needed because unidiff parsing changes the order
-        for unidiffPat in patches:
-            if patch.filename == unidiffPat.target_file[2:]:
-                uniDiffPatch = unidiffPat
         fileStatus = repo.status()[patch.filename]
         if fileStatus == pygit2.GIT_STATUS_WT_NEW or fileStatus == pygit2.GIT_STATUS_WT_DELETED:
             if fileStatus == pygit2.GIT_STATUS_WT_NEW:
@@ -357,23 +353,12 @@ async def getQuestions(nextFile: bool = False):
                 }
     del openPatches[0][1][0]
 
-    # TODO: pre-process the diff by extracting program symbols
-    # TODO: call the hunk ranker model
-
     return nextHunk
 
 import os
-from collections import Counter
-
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
-from imblearn.over_sampling import RandomOverSampler
-from sklearn.model_selection import KFold
-from torch.autograd import Variable
-from torch.nn import functional as F
-from torch.utils.data import TensorDataset, DataLoader
 from transformers import BertTokenizer, BertModel
 
 np.random.seed(0)
