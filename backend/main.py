@@ -272,7 +272,7 @@ async def commitFiles(commitToPublish: CommitToPublish):
     global files
     global repo
     global diffClean
-
+    logging.info("Clean diff: %s",diffClean.patch)
     patches = PatchSet.from_string(diffClean.patch)
 
     logging.info("Commit to publish: %s",commitToPublish)
