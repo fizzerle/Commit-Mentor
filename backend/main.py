@@ -32,7 +32,6 @@ projectPath = ""
 class Commit(BaseModel):
     message: str
 
-
 class Files(BaseModel):
     filesList: List[str]
 
@@ -61,10 +60,10 @@ class DiaryQuestions(BaseModel):
     issuesLinked: bool
     answers: List[QuestionAnswerPair]
 
+
 # order patches and hunks by most changes
-
-
 def orderPatches(diff):
+    logging.info("Enter orderPatches method")
     global orderedPatches
     global openPatches
     global filesToCommit
@@ -94,20 +93,18 @@ def orderPatches(diff):
 
     openPatches = copy.deepcopy(orderedPatches)
     filesToCommit = copy.deepcopy(allFiles)
-    print("ordered patches : ",orderedPatches)
+    logging.info("Ordered patches: %s", orderedPatches)
 
 # frontend remove the hunks to that files ==> alarm the user that questions that he already answered will be removed for that file
-
 # updates the openHunks to reflect which files are selected by the user in the frontend
-
-
 @app.put("/filesToCommit")
 async def filesToCom(filesSelectedByUser: Files):
+    logging.info('The user selected files at frontend')
     global filesToCommit
     global openPatches
 
-    print("files from frontend ", filesSelectedByUser.filesList)
-    print("files at backend ", filesToCommit)
+    logging.info("Files selected at frontend %s", filesSelectedByUser.filesList)
+    logging.info("Last know selected Files at backend %s", filesToCommit)
     files = filesSelectedByUser.filesList
     addedFiles = []
     deletedFiles = []
@@ -120,19 +117,19 @@ async def filesToCom(filesSelectedByUser: Files):
 
     deletedFiles = filesToCommit
 
-    print("added ", addedFiles)
-    print("delted ", deletedFiles)
+    logging.info("These Files where added %s", addedFiles)
+    logging.info("These Files where deleted %s", deletedFiles)
 
     openPatches = [(oldId, hunks, path) for (oldId, hunks, path)
                    in openPatches if path not in deletedFiles]
-    print("open patches without deleted ", openPatches)
+    logging.info("Open Patches without deleted %s", openPatches)
     for idx, (oldId, hunks, path) in enumerate(orderedPatches):
         if path in addedFiles:
             openPatches.append((oldId, hunks, path))
 
     openPatches = sorted(
         openPatches, key=lambda patch: patch[1],  reverse=True)
-    print("new open patches", openPatches)
+    logging.info("Open Patches with newly added files %s", openPatches)
     filesToCommit = files
     print(filesToCommit)
 
@@ -166,19 +163,43 @@ async def getDiff(path: str):
             statusMode = "DELETED"
         if statusMode != "":
             files.append((entry,statusMode))
-        print(entry,status[entry])
+        logging.debug(entry,status[entry])
 
     unstageAllFiles()
-    print("unstaged files")
     diff = repo.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT)
-    print("got normal diff")
+    logging.info("Got diff with untracked files")
     diffClean = repo.diff('HEAD', cached=False)
-    print("got clean diff")
+    logging.info("Got diff without untracked files")
     orderPatches(diff)
 
     return {'files':files,'diff':diff.patch}
 
+def unstageAllFiles():
+    logging.info("Unstaged all files")
+    global repo
+    global files
+    # unstage all files
+    for (path,mode) in files:
+        if(mode == "DELETED"):
+            obj = repo.revparse_single('HEAD').tree[path]  # Get object from db
+            repo.index.add(pygit2.IndexEntry(
+            path, obj.oid, obj.filemode))
+        if(path in repo.index):
+            repo.index.remove(path)
+            # Restore object from db
+            if(path in repo.revparse_single('HEAD').tree):
+                obj = repo.revparse_single('HEAD').tree[path]  # Get object from db
+                repo.index.add(pygit2.IndexEntry(
+                path, obj.oid, obj.filemode))  # Add to index
+    repo.index.write()
+
+'''
+all this code is need because the pygit2 patches do not contain enough information to generate a valid partial patch file
+so i need the unidiff patch library to collect all the information and i have to map between the unidiff patches and the
+pygit2 patches which have different order after parsing
+'''
 def partialCommit(commitToPublish,uniDiffPatches):
+    logging.info("Enter partial commit")
     global repo
     global projectPath
     os.chdir(projectPath)
@@ -271,12 +292,13 @@ async def commitFiles(commitToPublish: CommitToPublish):
 
     patches = PatchSet.from_string(diffClean.patch)
 
-    print(commitToPublish)
+    logging.info("Commit to publish: %s",commitToPublish)
 
 
     partialCommit(commitToPublish,patches)
     wholeFilesToAdd,wholeFilesToRemove = getFilesToAddAndToRemove(commitToPublish,patches)
 
+    #commit files that are either new or deleted
     repo.index.read()
     for patch in commitToPublish.patches:
         if patch.filename in wholeFilesToAdd:
@@ -299,32 +321,26 @@ async def commitFiles(commitToPublish: CommitToPublish):
 
 
 @app.get("/getQuestions")
-async def getQuestions(type: str = None, issues: List[int] = None, nextFile: bool = False):
+async def getQuestions(nextFile: bool = False):
     global openPatches
     global diff
 
-    needWhyQuestions = True
-    if issues:
-        needWhyQuestions = False
-    print(diff.stats.files_changed)
-    print(openPatches)
-    # How many Files changed in the Diff
+
+    logging.info("Open Patches are: %s",openPatches)
+    # when there are no hunks left
     if(diff.stats.files_changed == 0 or len(openPatches) == 0):
+        logging.info("send Finish because no questions left")
         return {"question": "Finsih"}
-    print("openPatches before delete", openPatches)
     if nextFile or len(openPatches[0][1]) == 0:
-            del openPatches[0]
-    print("openPatches after delete", openPatches)
+        del openPatches[0]
+    logging.info("Open Patches after delete: %s", openPatches)
+
+    # when somebody skipped the file and no hunks are left
     if(diff.stats.files_changed == 0 or len(openPatches) == 0):
+        logging.info("send Finish because no questions left")
         return {"question": "Finsih"}
 
-
-    for diffPatch in diff:
-        print(diffPatch.line_stats)
-        print("Patch has " + str(len(diffPatch.hunks)) + " hunks")
-
-    print("get Questio OPEN Patches",openPatches)
-    print("get Questio ORDERED Patches",orderedPatches)
+    logging.info("Ordered Patches: %s",orderedPatches)
 
     hunkCount = 0
     for patch in orderedPatches:
@@ -452,57 +468,26 @@ def test_model(input):
     global h
     global net
     output = net(input, h)
-    print("Model predicted: ", output)
+    logging.info("Model predicted: %s", output)
     # output = torch.nn.Softmax(dim=1)(output)
     _, predMax = torch.max(output, 1)
-    print("Model predicted: ", predMax.cpu().numpy()[0])
-    print("reponse",output.data[0][1].data.item())
+    logging.info("Response Score: %s",output.data[0][1].data.item())
     return output.data[0][1].data.item()
 
 tokenizer = None
 h = None
 net = None
 
-@app.get("/questionQuality")
-async def getQuestions(message: str = None):
-    global tokenizer
-    #message = "Issue <issue_link> ; when arrays differ in length, say so, but go ahead and find the first difference as usual to ease diagnosis"
-    print(message)
-    message.replace('<enter>', '$enter').replace('<tab>', '$tab'). \
-                                    replace('<url>', '$url').replace('<version>', '$version') \
-                                    .replace('<pr_link>', '$pull request>').replace('<issue_link >',
-                                                                                    '$issue') \
-                                    .replace('<otherCommit_link>', '$other commit').replace("<method_name>",
-                                                                                            "$method") \
-                                    .replace("<file_name>", "$file").replace("<iden>", "$token")
-    
-
-
-    message_tokens = tokenizer(message,
-                                padding=True,
-                                truncation=True,
-                                max_length=200,
-                                return_tensors='pt')
-    X = message_tokens['input_ids']
-
-    if (USE_CUDA):
-        print('Run on GPU.')
-    else:
-        print('No GPU available, run on CPU.')
-
-    test_model(X)
-
 @app.post("/checkMessage")
 async def checkMessage(commitToPublish: CommitToPublish):
     global tokenizer
+    global diffClean
     #message = "Issue <issue_link> ; when arrays differ in length, say so, but go ahead and find the first difference as usual to ease diagnosis"
     message = commitToPublish.message
-    print(message)
-    global diffClean
+    logging.info("Original Commit message: %s",message)
 
     patches = PatchSet.from_string(diffClean.patch)
 
-    print(commitToPublish)
     uniDiffPatches = []
     filePaths = []
     for patch in commitToPublish.patches:
@@ -514,6 +499,7 @@ async def checkMessage(commitToPublish: CommitToPublish):
         filePaths.append(patch.filename)
     message = preprocessMessageForModel(message,patches,filePaths)
 
+    logging.info("Preprocessed Commit message: %s",message)
     message_tokens = tokenizer(message,
                                 padding=True,
                                 truncation=True,
@@ -522,9 +508,9 @@ async def checkMessage(commitToPublish: CommitToPublish):
     X = message_tokens['input_ids']
 
     if (USE_CUDA):
-        print('Run on GPU.')
+        logging.info('Run on GPU.')
     else:
-        print('No GPU available, run on CPU.')
+        logging.info('No GPU available, run on CPU.')
 
     return test_model(X)
 
@@ -538,6 +524,7 @@ async def setupTokenizerAndModel():
     global net
     global tokenizer
     global predictor
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
     model_config = ModelConfig()
     predictor = Predictor.from_path("./tools/elmo-constituency-parser-2020.02.10.tar.gz")
     #predictor = pretrained.load_predictor("structured-prediction-constituency-parser")
@@ -594,7 +581,6 @@ def preprocessMessageForModel(message,patches,filepaths):
     .replace('<otherCommit_link>','$otherCommitLink').replace("<method_name>","$methodName")\
     .replace("<file_name>","$fileName").replace("<iden>","$token")
 
-    print(message)
     return message
 
 def cmp(elem):
