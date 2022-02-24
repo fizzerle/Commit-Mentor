@@ -1,4 +1,3 @@
-from fileinput import filename
 from fastapi import FastAPI, HTTPException
 import pygit2
 from typing import List
