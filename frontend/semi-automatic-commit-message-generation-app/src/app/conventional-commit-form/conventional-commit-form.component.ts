@@ -392,12 +392,9 @@ export class ConventionalCommitFormComponent{
         duration: 2000
       })
         if(this.allCommitsCommited()){
-          this.delay(2000).then(() => {
-            this.snackBar.open("You are finished with all commits. The page will reload now to prepare for your next commits.","",{
+          this.delay(3000).then(() => {
+            this.snackBar.open("You finished all commits. Please fill out the Diary Study. Thank you :)","",{
               duration: 2000
-            })
-            this.delay(3000).then(() => {
-              window.location.reload()
             })
           })
         }
