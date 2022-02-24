@@ -361,8 +361,6 @@ export class ConventionalCommitFormComponent{
   }
 
   commitCode(form: any) {
-    let type = CommitType.fix
-    let dict = {type: "test"}
     if(!form.valid) return
     this.committing = true
     console.log("committing ", this.commitPreviewMessage)
