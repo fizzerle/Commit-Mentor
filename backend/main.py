@@ -7,24 +7,24 @@ import copy
 from unidiff import PatchSet
 import os
 import subprocess
-import re
 from allennlp.predictors import Predictor
 import logging
+from preprocessMessage import preprocessMessageForModel
+from messageQualityModel import test_model, ModelConfig, setupModel
 
-orderedPatches = []
-openPatches = []
-filesToCommit = []
-files = []
-allFiles = []
-patchesDiff = []
 app = FastAPI()
 
-diff = None
-repo = None
-diffClean = None
+commitProcess = None
 
-projectPath = ""
+class CommitProcess:
+    orderedPatches = []
+    openPatches = []
+    filesSelectedByTheUser = []
+    fileNamesWithNewAndDeleted = []
+    projectPath = ""
 
+    pyGit2Diff = None
+    pyGit2Repository = None
 
 class Commit(BaseModel):
     message: str
@@ -59,19 +59,12 @@ class DiaryQuestions(BaseModel):
 
 
 # order patches and hunks by most changes
-def orderPatches(diff):
+def orderPatches(commitProcess):
     logging.info("Enter orderPatches method")
-    global orderedPatches
-    global openPatches
-    global filesToCommit
-    global allFiles
-    global patchesDiff
     orderedPatches = []
-    filesToCommit = []
     allFiles = []
-    for idx, patch in enumerate(diff):
+    for idx, patch in enumerate(commitProcess.pyGit2Diff):
         orderedPatches.append([idx, patch, [], patch.delta.new_file.path])
-        patchesDiff.append(patch.text)
     orderedPatches = sorted(
         orderedPatches, key=lambda tuple: tuple[1].line_stats[0]+tuple[1].line_stats[1]+tuple[1].line_stats[2],  reverse=True)
 
@@ -83,13 +76,13 @@ def orderPatches(diff):
         if(len(patch.hunks)) == 0:
             hunks.append((0, 0))
         newOrderedPatches.append([oldId, hunks, path])
-    orderedPatches = newOrderedPatches
+    commitProcess.orderedPatches = newOrderedPatches
 
-    for patch in orderedPatches:
+    for patch in newOrderedPatches:
         patch[1] = sorted(patch[1], key=lambda hunk: hunk[1],  reverse=True)
 
-    openPatches = copy.deepcopy(orderedPatches)
-    filesToCommit = copy.deepcopy(allFiles)
+    commitProcess.openPatches = copy.deepcopy(newOrderedPatches)
+    commitProcess.filesSelectedByTheUser = allFiles
     logging.info("Ordered patches: %s", orderedPatches)
 
 # frontend remove the hunks to that files ==> alarm the user that questions that he already answered will be removed for that file
@@ -97,59 +90,57 @@ def orderPatches(diff):
 @app.put("/filesToCommit")
 async def filesToCom(filesSelectedByUser: Files):
     logging.info('The user selected files at frontend')
-    global filesToCommit
-    global openPatches
+    global commitProcess
 
     logging.info("Files selected at frontend %s", filesSelectedByUser.filesList)
-    logging.info("Last know selected Files at backend %s", filesToCommit)
+    logging.info("Last know selected Files at backend %s", commitProcess.filesSelectedByTheUser)
     files = filesSelectedByUser.filesList
     addedFiles = []
     deletedFiles = []
 
     for path in files:
-        if path in filesToCommit:
-            filesToCommit.remove(path)
+        if path in commitProcess.filesSelectedByTheUser:
+            commitProcess.filesSelectedByTheUser.remove(path)
         else:
             addedFiles.append(path)
 
-    deletedFiles = filesToCommit
+    deletedFiles = commitProcess.filesSelectedByTheUser
 
     logging.info("These Files where added %s", addedFiles)
     logging.info("These Files where deleted %s", deletedFiles)
 
-    openPatches = [(oldId, hunks, path) for (oldId, hunks, path)
-                   in openPatches if path not in deletedFiles]
-    logging.info("Open Patches without deleted %s", openPatches)
-    for idx, (oldId, hunks, path) in enumerate(orderedPatches):
+    commitProcess.openPatches = [(oldId, hunks, path) for (oldId, hunks, path)
+                   in commitProcess.openPatches if path not in deletedFiles]
+    logging.info("Open Patches without deleted %s", commitProcess.openPatches)
+    for idx, (oldId, hunks, path) in enumerate(commitProcess.orderedPatches):
         if path in addedFiles:
-            openPatches.append((oldId, hunks, path))
+            commitProcess.openPatches.append((oldId, hunks, path))
 
-    openPatches = sorted(
-        openPatches, key=lambda patch: patch[1],  reverse=True)
-    logging.info("Open Patches with newly added files %s", openPatches)
-    filesToCommit = files
-    print(filesToCommit)
+    commitProcess.openPatches = sorted(
+        commitProcess.openPatches, key=lambda patch: patch[1],  reverse=True)
+    logging.info("Open Patches with newly added files %s", commitProcess.openPatches)
+    logging.info("Files that are selected %s", commitProcess.filesSelectedByTheUser)
+    commitProcess.filesSelectedByTheUser = files
+    return len(commitProcess.openPatches)
 
 @app.get("/getDiff")
 async def getDiff(path: str):
-    global diff
-    global files
-    global repo
-    global patchesDiff
-    global diffClean
-    global projectPath
+    global commitProcess
+
+    commitProcess = CommitProcess()
     if(os.path.isdir(path)):
-        projectPath = path
         try:
-            repo = pygit2.Repository(projectPath)
+            commitProcess.pyGit2Repository = pygit2.Repository(path)
         except pygit2.GitError:
             raise HTTPException(status_code=404, detail="The directory does not contain a git repository")
     else:
         raise HTTPException(status_code=404, detail="Directory not found")
-    repo = pygit2.Repository(projectPath)
-    files = []
+    
+    commitProcess.projectPath = path
+    commitProcess.pyGit2Repository = pygit2.Repository(path)
+    commitProcess.fileNamesWithNewAndDeleted = []
 
-    status = repo.status()
+    status = commitProcess.pyGit2Repository.status()
     for entry in status:
         statusMode = ""
         if(status[entry] == pygit2.GIT_STATUS_WT_NEW or status[entry] == 1):
@@ -159,36 +150,34 @@ async def getDiff(path: str):
         if(status[entry] == pygit2.GIT_STATUS_WT_DELETED or status[entry] == 4):
             statusMode = "DELETED"
         if statusMode != "":
-            files.append((entry,statusMode))
+            commitProcess.fileNamesWithNewAndDeleted.append((entry,statusMode))
         logging.debug(entry,status[entry])
 
     unstageAllFiles()
-    diff = repo.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT)
+    commitProcess.pyGit2Diff = commitProcess.pyGit2Repository.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT)
     logging.info("Got diff with untracked files")
-    diffClean = repo.diff('HEAD', cached=False)
-    logging.info("Got diff without untracked files")
-    orderPatches(diff)
+    orderPatches(commitProcess)
 
-    return {'files':files,'diff':diff.patch}
+    return {'files':commitProcess.fileNamesWithNewAndDeleted,'diff':commitProcess.pyGit2Diff.patch}
 
 def unstageAllFiles():
     logging.info("Unstaged all files")
-    global repo
-    global files
+    global commitProcess
+
     # unstage all files
-    for (path,mode) in files:
+    for (path,mode) in commitProcess.fileNamesWithNewAndDeleted:
         if(mode == "DELETED"):
-            obj = repo.revparse_single('HEAD').tree[path]  # Get object from db
-            repo.index.add(pygit2.IndexEntry(
+            obj = commitProcess.pyGit2Repository.revparse_single('HEAD').tree[path]  # Get object from db
+            commitProcess.pyGit2Repository.index.add(pygit2.IndexEntry(
             path, obj.oid, obj.filemode))
-        if(path in repo.index):
-            repo.index.remove(path)
+        if(path in commitProcess.pyGit2Repository.index):
+            commitProcess.pyGit2Repository.index.remove(path)
             # Restore object from db
-            if(path in repo.revparse_single('HEAD').tree):
-                obj = repo.revparse_single('HEAD').tree[path]  # Get object from db
-                repo.index.add(pygit2.IndexEntry(
+            if(path in commitProcess.pyGit2Repository.revparse_single('HEAD').tree):
+                obj = commitProcess.pyGit2Repository.revparse_single('HEAD').tree[path]  # Get object from db
+                commitProcess.pyGit2Repository.index.add(pygit2.IndexEntry(
                 path, obj.oid, obj.filemode))  # Add to index
-    repo.index.write()
+    commitProcess.pyGit2Repository.index.write()
 
 '''
 all this code is need because the pygit2 patches do not contain enough information to generate a valid partial patch file
@@ -197,9 +186,9 @@ pygit2 patches which have different order after parsing
 '''
 def partialCommit(commitToPublish,uniDiffPatches):
     logging.info("Enter partial commit")
-    global repo
-    global projectPath
-    os.chdir(projectPath)
+    global commitProcess
+    filesSelectedByTheUser = commitProcess.filesSelectedByTheUser
+    os.chdir(commitProcess.projectPath)
     for patch in commitToPublish.patches:
         diffToApply = ""
         uniDiffPatch = None
@@ -207,10 +196,10 @@ def partialCommit(commitToPublish,uniDiffPatches):
         for unidiffPat in uniDiffPatches:
             if patch.filename == unidiffPat.target_file[2:]:
                 uniDiffPatch = unidiffPat
-        fileStatus = repo.status()[patch.filename]
+        fileStatus = commitProcess.pyGit2Repository.status()[patch.filename]
         if fileStatus == pygit2.GIT_STATUS_WT_NEW or fileStatus == pygit2.GIT_STATUS_WT_DELETED:
             continue
-        filesToCommit.append(patch.filename)
+        filesSelectedByTheUser.append(patch.filename)
         source = ""
         target = ""
         if not uniDiffPatch.is_binary_file:
@@ -237,7 +226,7 @@ def partialCommit(commitToPublish,uniDiffPatches):
                 text_file.write(hunkPatch)
 
             with open("partial.log", "w+",encoding='utf-8') as text_file:
-                process = subprocess.Popen(['git', 'apply', '--cached', '-v', projectPath+"\partial.patch"],
+                process = subprocess.Popen(['git', 'apply', '--cached', '-v', commitProcess.projectPath+"\partial.patch"],
                                     stdout=text_file, 
                                     stderr=text_file)
                 process.communicate()
@@ -251,12 +240,13 @@ def partialCommit(commitToPublish,uniDiffPatches):
 '''
 returns the filenames of the files that are new or got deleted
 '''
+#TODO: MAYBE THIS IS THE PROBLEM WITH NEW OR DELETED FILES, WRONG PATCHES USED
 def getFilesToAddAndToRemove(commitToPublish,patches):
-    global repo
+    global commitProcess
     wholeFilesToAdd = []
     wholeFilesToRemove = []
     for patch in commitToPublish.patches:
-        fileStatus = repo.status()[patch.filename]
+        fileStatus = commitProcess.pyGit2Repository.status()[patch.filename]
         if fileStatus == pygit2.GIT_STATUS_WT_NEW or fileStatus == pygit2.GIT_STATUS_WT_DELETED:
             if fileStatus == pygit2.GIT_STATUS_WT_NEW:
                 wholeFilesToAdd.append(patch.filename)
@@ -267,13 +257,8 @@ def getFilesToAddAndToRemove(commitToPublish,patches):
 
 @app.post("/commit")
 async def commitFiles(commitToPublish: CommitToPublish):
-    global filesToCommit
-    global diff
-    global files
-    global repo
-    global diffClean
-    logging.info("Clean diff: %s",diffClean.patch)
-    patches = PatchSet.from_string(diffClean.patch)
+    global commitProcess
+    patches = PatchSet.from_string(commitProcess.pyGit2Diff.patch)
 
     logging.info("Commit to publish: %s",commitToPublish)
 
@@ -282,21 +267,21 @@ async def commitFiles(commitToPublish: CommitToPublish):
     wholeFilesToAdd,wholeFilesToRemove = getFilesToAddAndToRemove(commitToPublish,patches)
 
     #commit files that are either new or deleted
-    repo.index.read()
+    commitProcess.pyGit2Repository.index.read()
     for patch in commitToPublish.patches:
         if patch.filename in wholeFilesToAdd:
-            repo.index.add(patch.filename)
+            commitProcess.pyGit2Repository.index.add(patch.filename)
         elif patch.filename in wholeFilesToRemove:
-            repo.index.remove(patch.filename)
+            commitProcess.pyGit2Repository.index.remove(patch.filename)
         else:
             continue
-    repo.index.write()
-    tree = repo.index.write_tree()
-    parent, ref = repo.resolve_refish(refish=repo.head.name)
-    repo.create_commit(
+    commitProcess.pyGit2Repository.index.write()
+    tree = commitProcess.pyGit2Repository.index.write_tree()
+    parent, ref = commitProcess.pyGit2Repository.resolve_refish(refish=commitProcess.pyGit2Repository.head.name)
+    commitProcess.pyGit2Repository.create_commit(
         ref.name,
-        repo.default_signature,
-        repo.default_signature,
+        commitProcess.pyGit2Repository.default_signature,
+        commitProcess.pyGit2Repository.default_signature,
         commitToPublish.message,
         tree,
         [parent.oid],
@@ -305,171 +290,58 @@ async def commitFiles(commitToPublish: CommitToPublish):
 
 @app.get("/getQuestions")
 async def getQuestions(nextFile: bool = False):
-    global openPatches
-    global diff
+    global commitProcess
 
-
-    logging.info("Open Patches are: %s",openPatches)
+    logging.info("Open Patches are: %s",commitProcess.openPatches)
     # when there are no hunks left
-    if(diff.stats.files_changed == 0 or len(openPatches) == 0):
+    if(commitProcess.pyGit2Diff.stats.files_changed == 0 or len(commitProcess.openPatches) == 0):
         logging.info("send Finish because no questions left")
         return {"question": "Finsih"}
-    if nextFile or len(openPatches[0][1]) == 0:
-        del openPatches[0]
-    logging.info("Open Patches after delete: %s", openPatches)
+    if nextFile or len(commitProcess.openPatches[0][1]) == 0:
+        del commitProcess.openPatches[0]
+    logging.info("Open Patches after delete: %s", commitProcess.openPatches)
 
     # when somebody skipped the file and no hunks are left
-    if(diff.stats.files_changed == 0 or len(openPatches) == 0):
+    if(commitProcess.pyGit2Diff.stats.files_changed == 0 or len(commitProcess.openPatches) == 0):
         logging.info("send Finish because no questions left")
         return {"question": "Finsih"}
 
-    logging.info("Ordered Patches: %s",orderedPatches)
+    logging.info("Ordered Patches: %s",commitProcess.orderedPatches)
 
     hunkCount = 0
-    for patch in orderedPatches:
-        if patch[0] == openPatches[0][0]:
+    for patch in commitProcess.orderedPatches:
+        if patch[0] == commitProcess.openPatches[0][0]:
             hunkCount = len(patch[1])
 
     nextHunk = {"question": "This code part will",
-                "fileNumber": openPatches[0][0],
-                "filePath": openPatches[0][2],
-                "hunkNumber": openPatches[0][1][0][0],
-                "openFiles": len(openPatches),
-                "openHunks":len(openPatches[0][1]),
+                "fileNumber": commitProcess.openPatches[0][0],
+                "filePath": commitProcess.openPatches[0][2],
+                "hunkNumber": commitProcess.openPatches[0][1][0][0],
+                "openFiles": len(commitProcess.openPatches),
+                "openHunks":len(commitProcess.openPatches[0][1]),
                 "allHunksForThisFile": hunkCount
                 }
-    del openPatches[0][1][0]
-
+    del commitProcess.openPatches[0][1][0]
+    logging.info("Next hunk returned: %s",nextHunk)
     return nextHunk
-
-import os
-import numpy as np
-import torch
-import torch.nn as nn
-from transformers import BertTokenizer, BertModel
-
-np.random.seed(0)
-torch.manual_seed(0)
-USE_CUDA = torch.cuda.is_available()
-if USE_CUDA:
-    torch.cuda.manual_seed(0)
-
-
-class ModelConfig:
-    batch_size = 32
-    output_size = 2
-    hidden_dim = 384
-    n_layers = 2
-    lr = 2e-5
-    bidirectional = True
-    drop_prob = 0.55
-    # training params
-    epochs = 10
-    print_every = 10
-    clip = 5  # gradient clipping
-    use_cuda = USE_CUDA
-    bert_path = 'bert-base-uncased'
-    save_path = './bert_bilstm.pth'
-    sampleRate = 2
-    labelSelected = 2  # 2/3, 2:Why label; 3:What label
-
-
-class bert_lstm(nn.Module):
-    def __init__(self, bertpath, hidden_dim, output_size, n_layers, bidirectional=True, drop_prob=0.5):
-        super(bert_lstm, self).__init__()
-
-        self.output_size = output_size
-        self.n_layers = n_layers
-        self.hidden_dim = hidden_dim
-        self.bidirectional = bidirectional
-
-        self.bert = BertModel.from_pretrained(bertpath)
-        for param in self.bert.parameters():
-            param.requires_grad = True
-
-        # LSTM layers
-        self.lstm = nn.LSTM(768, hidden_dim, n_layers, batch_first=True, bidirectional=bidirectional)
-
-        # dropout layer
-        self.dropout = nn.Dropout(drop_prob)
-
-        # linear and sigmoid layers
-        if bidirectional:
-            self.fc = nn.Linear(hidden_dim * 2, output_size)
-        else:
-            self.fc = nn.Linear(hidden_dim, output_size)
-
-        # self.sig = nn.Sigmoid()
-
-    def forward(self, x, hidden):
-        batch_size = x.size(0)
-        x = self.bert(x)[0]
-        lstm_out, (hidden_last, cn_last) = self.lstm(x, hidden)
-
-        if self.bidirectional:
-            hidden_last_L = hidden_last[-2]
-            hidden_last_R = hidden_last[-1]
-            hidden_last_out = torch.cat([hidden_last_L, hidden_last_R], dim=-1)
-        else:
-            hidden_last_out = hidden_last[-1]
-
-        # dropout and fully-connected layer
-        out = self.dropout(hidden_last_out)
-        # print(out.shape)
-        out = self.fc(out)
-        return out
-
-    def init_hidden(self, batch_size):
-        weight = next(self.parameters()).data
-        number = 1
-        if self.bidirectional:
-            number = 2
-        if (USE_CUDA):
-            hidden = (weight.new(self.n_layers * number, batch_size, self.hidden_dim).zero_().float().cuda(),
-                      weight.new(self.n_layers * number, batch_size, self.hidden_dim).zero_().float().cuda()
-                      )
-        else:
-            hidden = (weight.new(self.n_layers * number, batch_size, self.hidden_dim).zero_().float(),
-                      weight.new(self.n_layers * number, batch_size, self.hidden_dim).zero_().float()
-                      )
-        return hidden
-
-
-
-def test_model(input):
-    global h
-    global net
-    output = net(input, h)
-    logging.info("Model predicted: %s", output)
-    # output = torch.nn.Softmax(dim=1)(output)
-    _, predMax = torch.max(output, 1)
-    logging.info("Response Score: %s",output.data[0][1].data.item())
-    return output.data[0][1].data.item()
-
-tokenizer = None
-h = None
-net = None
 
 @app.post("/checkMessage")
 async def checkMessage(commitToPublish: CommitToPublish):
     global tokenizer
-    global diffClean
+    global commitProcess
+    global predictor
+    global net
+    global h
     #message = "Issue <issue_link> ; when arrays differ in length, say so, but go ahead and find the first difference as usual to ease diagnosis"
     message = commitToPublish.message
     logging.info("Original Commit message: %s",message)
 
-    patches = PatchSet.from_string(diffClean.patch)
+    patches = PatchSet.from_string(commitProcess.pyGit2Diff.patch)
 
-    uniDiffPatches = []
     filePaths = []
     for patch in commitToPublish.patches:
-
-        #searching is needed because unidiff parsing changes the order
-        for unidiffPat in patches:
-            if patch.filename == unidiffPat.target_file[2:]:
-                uniDiffPatches.append(unidiffPat)
         filePaths.append(patch.filename)
-    message = preprocessMessageForModel(message,patches,filePaths)
+    message = preprocessMessageForModel(message,patches,filePaths, predictor)
 
     logging.info("Preprocessed Commit message: %s",message)
     message_tokens = tokenizer(message,
