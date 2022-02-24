@@ -265,8 +265,7 @@ def partialCommit(commitToPublish,uniDiffPatches):
 '''
 returns the filenames of the files that are new or got deleted
 '''
-#TODO: MAYBE THIS IS THE PROBLEM WITH NEW OR DELETED FILES, WRONG PATCHES USED
-def getFilesToAddAndToRemove(commitToPublish,patches):
+def getFilesToAddAndToRemove(commitToPublish):
     global commitProcess
     wholeFilesToAdd = []
     wholeFilesToRemove = []
