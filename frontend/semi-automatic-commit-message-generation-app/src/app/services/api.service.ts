@@ -17,10 +17,8 @@ export class ApiService {
   }
 
   filesToCommit(files: string[]) {
-    return this.http.put<string>("/api/filesToCommit",{filesList: files})
+    return this.http.put<number>("/api/filesToCommit",{filesList: files})
   }
-
-
 
   getQuestionHunk(nextFile:boolean) {
     let params = new HttpParams().set("nextFile",nextFile); //Create new HttpParams

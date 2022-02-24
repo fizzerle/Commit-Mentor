@@ -117,8 +117,9 @@ export class ConventionalCommitFormComponent{
       }
       this.oldFiles = this.filesToCommit;
       console.log("Hunks after removal",this.questionHunks)
-      this.apiService.filesToCommit(this.filesToCommit).subscribe(() => {
+      this.apiService.filesToCommit(this.filesToCommit).subscribe((openFileNumber) => {
         if(this.questionHunks.length == 0) this.addQuestionHunk(undefined,false)
+        else this.openFiles = openFileNumber
       })
       //focus introduces error message that field got change after check see https://github.com/angular/components/issues/12070
       this.focus = false
