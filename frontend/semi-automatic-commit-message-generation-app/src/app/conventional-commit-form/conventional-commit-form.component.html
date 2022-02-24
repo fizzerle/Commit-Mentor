@@ -101,12 +101,12 @@
                 <button mat-raised-button (click)="removeQuestion(i)" style="margin-left: 1rem;">Do not stage this hunk</button>
                 <div style="display: inline-flex; flex-direction: column; min-width: 11rem; vertical-align: middle; justify-content: center;">
                     <div style="display: inline-flex; flex-direction: row; align-items: center">
-                      <div style="margin-left: 1rem; margin-right: 0.3rem;font-size: 0.8rem;">Files completed</div>
+                      <div style="margin-left: 1rem; margin-right: 0.3rem;font-size: 0.8rem;">Files</div>
                       <span style="display: inline-flex; max-width: 3rem; vertical-align: text-top;  margin-right: 0.4rem" >{{oldFiles.length-openFiles}}/{{oldFiles.length}}</span>
                       <mat-progress-bar style="display: inline-flex; max-width: 3rem; vertical-align: text-top" mode="determinate" [value]="((oldFiles.length-openFiles)/oldFiles.length)*100" color="warn" [class.green-progress]="(oldFiles.length-openFiles)/oldFiles.length> 0.7">Test</mat-progress-bar>
                     </div>
                   <div style="display: inline-flex;flex-direction: row; align-items: center">
-                    <div style="margin-left: 1rem; margin-right: 0.3rem;font-size: 0.8rem;">Hunks completed</div>
+                    <div style="margin-left: 1rem; margin-right: 0.3rem;font-size: 0.8rem;">Hunks</div>
                     <span style="display: inline-flex; max-width: 3rem; vertical-align: text-top; margin-right: 0.4rem">{{allHunksForCurrentFile-openHunks}}/{{allHunksForCurrentFile}}</span>
                     <mat-progress-bar style="display: inline-flex; max-width: 3rem; vertical-align: text-top" mode="determinate" [value]="((allHunksForCurrentFile-openHunks)/allHunksForCurrentFile)*100" color="warn" [class.green-progress]="(allHunksForCurrentFile-openHunks)/allHunksForCurrentFile > 0.7">Test</mat-progress-bar>
                 </div>
