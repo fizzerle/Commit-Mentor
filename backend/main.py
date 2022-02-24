@@ -16,14 +16,19 @@ app = FastAPI()
 commitProcess = None
 
 class CommitProcess:
+    #List<FileNumber, PyGit2Patch, List<HunkNumber,CountHunkLines>,FileName>
     orderedPatches = []
+    #List<FileNumber, List<HunkNumber,CountHunkLines>,FileName>
     openPatches = []
+    #List<FileNames>
     filesSelectedByTheUser = []
+    #List<FileNames>
     fileNamesWithNewAndDeleted = []
     projectPath = ""
 
     pyGit2Diff = None
     pyGit2Repository = None
+    uniDiffPatches = None
 
 class Commit(BaseModel):
     message: str
@@ -56,8 +61,15 @@ class DiaryQuestions(BaseModel):
     issuesLinked: bool
     answers: List[QuestionAnswerPair]
 
+tokenizer = None
+h = None
+net = None
+predictor = None
 
-# order patches and hunks by most changes
+
+'''
+Order the patches and hunks how big they are. And also bring them in a form that they are easily exchanable with the frontend
+'''
 def orderPatches(commitProcess):
     logging.info("Enter orderPatches method")
     orderedPatches = []
@@ -84,8 +96,11 @@ def orderPatches(commitProcess):
     commitProcess.filesSelectedByTheUser = allFiles
     logging.info("Ordered patches: %s", orderedPatches)
 
-# frontend remove the hunks to that files ==> alarm the user that questions that he already answered will be removed for that file
-# updates the openHunks to reflect which files are selected by the user in the frontend
+'''
+frontend the selection of file changes (somebody went back to the first stage and selected different files)
+updates the openHunks to reflect which files are selected by the user in the frontend
+returns the number of files that are open
+'''
 @app.put("/filesToCommit")
 async def filesToCom(filesSelectedByUser: Files):
     logging.info('The user selected files at frontend')
@@ -122,6 +137,11 @@ async def filesToCom(filesSelectedByUser: Files):
     commitProcess.filesSelectedByTheUser = files
     return len(commitProcess.openPatches)
 
+'''
+returns the diff for a certain project directory
+@path is the path to the project to get the diff from
+returns the diff for all files, also untracked ones, setup infrastructure to work with the diff, like ordering the patches
+'''
 @app.get("/getDiff")
 async def getDiff(path: str):
     global commitProcess
@@ -151,14 +171,20 @@ async def getDiff(path: str):
         if statusMode != "":
             commitProcess.fileNamesWithNewAndDeleted.append((entry,statusMode))
         logging.debug(entry,status[entry])
-
+    
+    # it is needed to unstage all files before getting the diff otherwise i would have to make case distinctions between
+    # staged and unstaged files
     unstageAllFiles()
     commitProcess.pyGit2Diff = commitProcess.pyGit2Repository.diff('HEAD', cached=False,flags =pygit2.GIT_DIFF_RECURSE_UNTRACKED_DIRS+pygit2.GIT_DIFF_INCLUDE_UNTRACKED+pygit2.GIT_DIFF_SHOW_UNTRACKED_CONTENT)
+    commitProcess.uniDiffPatches = PatchSet.from_string(commitProcess.pyGit2Diff.patch)
     logging.info("Got diff with untracked files")
     orderPatches(commitProcess)
 
     return {'files':commitProcess.fileNamesWithNewAndDeleted,'diff':commitProcess.pyGit2Diff.patch}
 
+'''
+Unstages all files in the git project directory defined
+'''
 def unstageAllFiles():
     logging.info("Unstaged all files")
     global commitProcess
@@ -254,16 +280,20 @@ def getFilesToAddAndToRemove(commitToPublish,patches):
             continue
     return (wholeFilesToAdd,wholeFilesToRemove)
 
+'''
+Commits all the patches contained in the commitToPublish object
+we have to make a distinction between changes in existsing files and new or delted files because by applying
+a patch it is not possible to add or remove a file
+'''
 @app.post("/commit")
 async def commitFiles(commitToPublish: CommitToPublish):
     global commitProcess
-    patches = PatchSet.from_string(commitProcess.pyGit2Diff.patch)
 
     logging.info("Commit to publish: %s",commitToPublish)
 
 
-    partialCommit(commitToPublish,patches)
-    wholeFilesToAdd,wholeFilesToRemove = getFilesToAddAndToRemove(commitToPublish,patches)
+    partialCommit(commitToPublish,commitProcess.uniDiffPatches)
+    wholeFilesToAdd,wholeFilesToRemove = getFilesToAddAndToRemove(commitToPublish)
 
     #commit files that are either new or deleted
     commitProcess.pyGit2Repository.index.read()
@@ -286,7 +316,9 @@ async def commitFiles(commitToPublish: CommitToPublish):
         [parent.oid],
     )
 
-
+'''
+returns one hunk at a time to the frontend, in the order defined by the ordered hunks list
+'''
 @app.get("/getQuestions")
 async def getQuestions(nextFile: bool = False):
     global commitProcess
@@ -324,6 +356,10 @@ async def getQuestions(nextFile: bool = False):
     logging.info("Next hunk returned: %s",nextHunk)
     return nextHunk
 
+'''
+preprocesses the messages to be able to feed the message to the pretrained bert model that determines the message quality
+return the score that the model calculated
+'''
 @app.post("/checkMessage")
 async def checkMessage(commitToPublish: CommitToPublish):
     global tokenizer
@@ -352,11 +388,9 @@ async def checkMessage(commitToPublish: CommitToPublish):
 
     return test_model(X, net, h)
 
-tokenizer = None
-h = None
-net = None
-predictor = None
-
+'''
+on startup load ELMO and BERT model one time to make consecutive requests faster
+'''
 @app.on_event("startup")
 async def setupTokenizerAndModel():
     global tokenizer
