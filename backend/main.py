@@ -371,12 +371,10 @@ async def checkMessage(commitToPublish: CommitToPublish):
     message = commitToPublish.message
     logging.info("Original Commit message: %s",message)
 
-    patches = PatchSet.from_string(commitProcess.pyGit2Diff.patch)
-
     filePaths = []
     for patch in commitToPublish.patches:
         filePaths.append(patch.filename)
-    message = preprocessMessageForModel(message,patches,filePaths, predictor)
+    message = preprocessMessageForModel(message,commitProcess.uniDiffPatches,filePaths, predictor)
 
     logging.info("Preprocessed Commit message: %s",message)
     message_tokens = tokenizer(message,
