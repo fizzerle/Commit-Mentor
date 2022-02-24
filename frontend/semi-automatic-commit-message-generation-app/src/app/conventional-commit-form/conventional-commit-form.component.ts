@@ -463,7 +463,7 @@ export class ConventionalCommitFormComponent{
     if(commit.type || commit.scope) commit.finalMessage += ": "
     if(commit.short_description) commit.finalMessage += commit.short_description + "\n"
 
-    if(commit.body) commit.finalMessage += commit.body + "\n"
+    if(commit.body) commit.finalMessage += "\n" + commit.body + "\n\n"
     console.log(commit.closesIssue)
     if(commit.closesIssue) {
       let ids = ""
