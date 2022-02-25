@@ -334,7 +334,7 @@ async def getQuestions(nextFile: bool = False):
     # when somebody skipped the file and no hunks are left
     if(commitProcess.pyGit2Diff.stats.files_changed == 0 or len(commitProcess.openPatches) == 0):
         logging.info("send Finish because no questions left")
-        return {"question": "Finsih"}
+        return {"question": "Finish"}
 
     logging.info("Ordered Patches: %s",commitProcess.orderedPatches)
 

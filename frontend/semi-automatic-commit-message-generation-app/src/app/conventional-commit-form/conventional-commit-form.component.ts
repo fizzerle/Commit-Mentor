@@ -260,7 +260,7 @@ export class ConventionalCommitFormComponent{
     this.loading = true
     this.apiService.getQuestionHunk(nextFile).pipe(catchError(() => {this.loading = false; return throwError("Request had a Error")} )).subscribe((questionHunk) => {
 
-      if(questionHunk.question == 'Finsih'){
+      if(questionHunk.question == 'Finish'){
         this.loading = false
         this.snackBar.open("All Questions answered","",{
           duration: 3000
