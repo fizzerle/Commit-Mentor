@@ -32,6 +32,18 @@ export class ApiService {
     );
   }
 
+  saveDiaryEntry(answers: string[]) {
+    return this.http.post("/api/saveDiaryEntry", {answers: answers}, {observe: 'response'}).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  allCommitsComitted() {
+      return this.http.post("/api/allCommitsComitted",undefined,{ observe: 'response' }).pipe(
+        catchError(this.handleError)
+      );
+  }
+
   checkMessage(commitToPublish: CommitToPublish) {
     return this.http.post<number>("/api/checkMessage",commitToPublish,{ observe: 'response' }).pipe(
       catchError(this.handleError)

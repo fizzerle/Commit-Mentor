@@ -576,13 +576,18 @@ export class ConventionalCommitFormComponent{
     }
   }
 
+  public answers: string[] = ["","","","","","",""]
+
   saveDiaryEntry() {
-    this.delay(2000).then(() => {
-      this.snackBar.open("You are finished with all commits. The page will reload now to prepare for your next commits.","",{
-        duration: 2000
-      })
-      this.delay(3000).then(() => {
-        window.location.reload()
+    console.log(this.answers)
+    this.apiService.saveDiaryEntry(this.answers).subscribe(() => {
+      this.delay(2000).then(() => {
+        this.snackBar.open("You are finished with all commits. The page will reload now to prepare for your next commits.","",{
+          duration: 2000
+        })
+        this.delay(3000).then(() => {
+          window.location.reload()
+        })
       })
     })
   }

@@ -382,8 +382,18 @@ async def checkMessage(commitToPublish: CommitToPublish):
                                 max_length=200,
                                 return_tensors='pt')
     X = message_tokens['input_ids']
+    modelScore = test_model(X, net, h)
+    return modelScore
 
-    return test_model(X, net, h)
+'''
+Save the diary entry and statistic to disk so it can be later sent back to the author
+'''
+@app.post("/saveDiaryEntry")
+async def saveDiaryEntry(diaryAnswers: DiaryAnswers):
+    global commitProcess
+    diaryAnswers.answers.insert(0,commitProcess.statistics.uuid)
+    writeArrayToCsv("diaryQuestionAnsweres.csv",diaryAnswers.answers)
+    pass
 
 '''
 on startup load ELMO and BERT model one time to make consecutive requests faster
