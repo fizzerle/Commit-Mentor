@@ -134,6 +134,9 @@ export class ConventionalCommitFormComponent{
     if(stepperEvent.selectedIndex === 2){
       this.finishMessageSelected()
     }
+    if(stepperEvent.selectedIndex === 3) {
+      this.apiService.allCommitsComitted().subscribe()
+    }
   }
 
   /*
