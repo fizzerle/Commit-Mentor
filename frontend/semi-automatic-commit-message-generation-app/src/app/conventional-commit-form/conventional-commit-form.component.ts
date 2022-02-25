@@ -146,7 +146,7 @@ export class ConventionalCommitFormComponent{
     console.log(this.userForm.getRawValue())
     this.commits = []
     this.userForm.getRawValue().answers.forEach((answer: string,index:number) => {
-      if (answer !== null && answer !== "") {
+      if (answer !== null) {
         const newCommit = new Commit(undefined,undefined,answer)
         newCommit.mainHunk = index
         newCommit.hunks.push(index)
