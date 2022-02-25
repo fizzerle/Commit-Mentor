@@ -444,7 +444,6 @@ export class ConventionalCommitFormComponent{
   fileNamesOfSelectedLeafNodes(node: trie_node): trie_node[]{
     //console.log(node)
     if(node.terminal && node.selected){
-      console.log(node.path)
       return [node]
     }
 
