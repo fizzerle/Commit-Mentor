@@ -145,7 +145,6 @@ returns the diff for all files, also untracked ones, setup infrastructure to wor
 @app.get("/getDiff")
 async def getDiff(path: str):
     global commitProcess
-
     commitProcess = CommitProcess()
     if(os.path.isdir(path)):
         try:

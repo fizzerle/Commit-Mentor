@@ -99,7 +99,6 @@ export class ConventionalCommitFormComponent{
         this.filesToCommit.push(this.getFullPath(node))
       }
       let missingFiles = this.oldFiles.filter(path => this.filesToCommit.indexOf(path) < 0);
-
       console.log("missing Files", missingFiles)
       if(missingFiles.length > 0){
         console.error("OH NO SOME FILES GOT REMOVED")
