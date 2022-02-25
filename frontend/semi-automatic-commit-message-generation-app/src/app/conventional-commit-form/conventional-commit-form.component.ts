@@ -30,6 +30,10 @@ export class FileNode {
   styleUrls: ['./conventional-commit-form.component.scss']
 })
 export class ConventionalCommitFormComponent{
+
+  @ViewChild('stepper')
+  stepper: MatStepper;
+
   Type= CommitType
   commitTypes: string[];
   commitPreviewMessage = "";
@@ -392,10 +396,11 @@ export class ConventionalCommitFormComponent{
         duration: 2000
       })
         if(this.allCommitsCommited()){
-          this.delay(3000).then(() => {
+          this.delay(2000).then(() => {
             this.snackBar.open("You finished all commits. Please fill out the Diary Study. Thank you :)","",{
-              duration: 2000
+              duration: 4000
             })
+            this.stepper.selectedIndex = 3
           })
         }
     })
