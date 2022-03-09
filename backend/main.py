@@ -221,6 +221,7 @@ def partialCommit(commitToPublish,uniDiffPatches):
             if patch.filename == unidiffPat.target_file[2:]:
                 uniDiffPatch = unidiffPat
         fileStatus = commitProcess.pyGit2Repository.status()[patch.filename]
+        # skip new or delted files because they cannot be added or delted via a patch, they are treated seperately
         if fileStatus == pygit2.GIT_STATUS_WT_NEW or fileStatus == pygit2.GIT_STATUS_WT_DELETED:
             continue
         filesSelectedByTheUser.append(patch.filename)
