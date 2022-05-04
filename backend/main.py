@@ -47,19 +47,26 @@ class CommitToPublish(BaseModel):
     message: str
     patches: List[Patch]
 
-class QuestionAnswerPair(BaseModel):
-    question: str
-    answer: str
-class DiaryQuestions(BaseModel):
+class DiaryAnswers(BaseModel):
+    answers: List[str]
+
+class Statistic:
+    uuid: str
     date: str
-    numberOfCommits: int
+    startCommitingMilliseconds: float
+    startHunkAnswering = 0.0
+    finishedHunkAnsweringMilliseconds: float
+    numberOfCommits = 0
     secondsSpentCommiting: int
-    secondsSpentAnsweringHunks: int
-    secondsSpentAddingTheRationale: int
-    commitMessageLength: str
-    diffLength: str
+    secondsSpentAnsweringHunks = 0
+    
+class StatisticPerCommit:
+    uuid: str
+    secondsSpentAddingTheRational: int
+    commitMessageLength: int
+    diffLength: int
     issuesLinked: bool
-    answers: List[QuestionAnswerPair]
+    messageScore: float
 
 tokenizer = None
 h = None
