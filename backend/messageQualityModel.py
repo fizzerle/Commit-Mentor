@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from torch import tensor
 import torch.nn as nn
 from transformers import BertTokenizer, BertModel
 import logging
