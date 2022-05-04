@@ -171,3 +171,47 @@ li mat-checkbox {
   display: block;
   margin-top: 0.25rem;
 }
+
+header, .row {
+  display: flex;  /* aligns all child elements (flex items) in a row */
+  margin-top: 1rem;
+}
+
+.col {
+  flex: 1;        /* distributes space on the line equally among items */
+  max-width: 5rem;
+  text-align: center;
+}
+
+.colQuestion {
+  flex: 1;
+  max-width: 40rem;
+}
+
+::ng-deep .mat-radio-label{
+  justify-content: center;
+}
+
+
+.long-arrow{
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-top: 3px solid #000;
+  border-left: 3px solid #000;
+  margin-bottom: 1rem;
+  margin-left: 0.7rem;
+  transform: rotate(225deg);
+}
+
+.long-arrow::after{
+  content: "";
+  display: block;
+  width: 2px;
+  height: 26rem;
+  background-color: black;
+  transform: rotate(-45deg) translate(146px, 58px);
+  left: 0;
+  top: 0;
+}
+
