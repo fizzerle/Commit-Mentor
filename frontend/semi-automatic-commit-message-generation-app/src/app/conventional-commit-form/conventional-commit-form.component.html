@@ -98,7 +98,7 @@
                 </mat-form-field>
                 <button mat-raised-button="" (click)="addQuestionHunk(stepper,false)" style="margin-left: 1rem;" [class.spinner]="loading" color="primary" [disabled]="loading">Load next hunk</button>
                 <!--button mat-raised-button="" (click)="addQuestionHunk(stepper,true)" style="margin-left: 1rem;" [class.spinner]="loading" color="primary" [disabled]="loading">Question next file</button>!-->
-                <button mat-raised-button (click)="removeQuestion(i)" style="margin-left: 1rem;">Do not stage this hunk</button>
+                <button mat-raised-button (click)="removeQuestion(i);addQuestionHunk(stepper,false)" style="margin-left: 1rem;">Do not stage this hunk</button>
                 <div style="display: inline-flex; flex-direction: column; min-width: 11rem; vertical-align: middle; justify-content: center;">
                     <div style="display: inline-flex; flex-direction: row; align-items: center">
                       <div style="margin-left: 1rem; margin-right: 0.3rem;font-size: 0.8rem;">Files</div>
