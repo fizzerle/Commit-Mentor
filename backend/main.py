@@ -29,6 +29,7 @@ class CommitProcess:
     pyGit2Diff = None
     pyGit2Repository = None
     uniDiffPatches = None
+    statistics = None
 
 class Commit(BaseModel):
     message: str
