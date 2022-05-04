@@ -49,7 +49,14 @@ export class ConventionalCommitFormComponent{
   allHunksForCurrentFile: number = 1;
   private _projectPath: string ="";
   selectedCommit: Commit = new Commit();
-  questionsForSelectedCommitType: string[] = [];
+  questionsForSelectedCommitType: number[] = [];
+  private intervalId: number;
+
+  private motivatingMessages = [" most of the time developing is spent on understanding code changes, so to speed up the understanding describe in detail what and why you changed something",
+    "developers search multiple times per month for side effects, maturity stage, selected alternative and constraints however they are seldom recorded",
+    "if commit messages are well structured they can be used for automatic changelog creation and triggering of automation's like deployments or running of specific tests",
+    "maintenance can typically be expected to use up 70-90% of the overall project budget, documentation like commit messages help to improve maintainability",
+    "commit messages can be used for automatic bug localisation "]
 
   @Input() set projectPath(value: string) {
     this._projectPath = value;
