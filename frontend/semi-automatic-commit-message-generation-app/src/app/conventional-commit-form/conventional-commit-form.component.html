@@ -65,7 +65,7 @@
     <mat-step label="Fill In Body" style="overflow: visible">
 
       <div *ngIf="this.loading">
-        <p>Loading the hunks...</p>
+        <p>Loading the hunks... </p>
         <mat-spinner></mat-spinner>
       </div>
       <form [formGroup]="userForm" (ngSubmit)="send(userForm.value)">
