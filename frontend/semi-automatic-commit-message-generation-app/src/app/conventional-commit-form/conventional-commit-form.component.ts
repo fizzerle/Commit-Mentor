@@ -547,42 +547,79 @@ export class ConventionalCommitFormComponent{
     return this.defaultColours[strength]
   }
 
-  questionsForCommitType: {[commitype: string] : string[]} = {
+  questionsForCommitType: {heading: string, questions: string[]}[]  = [
+    {
+      heading: "Describe Issue",
+      questions: ["Where and how did the error occur?",
+        "Is the change due to a warnings or errors of a tool?",
+        "What was the shortcoming of the current solution?"
+      ],
+    },
+    {
+      heading: "Illustrate requirement",
+      questions: ["Was something out of date",
+        "Why did you need to make this change?",
+        "Did the runtime or development environment change?"
+      ],
+    },
+      {
+        heading: "Describe objective",
+        questions: ["What improvement does your change bring?",
+          "How have you fixed the problem?"
+        ],
+      },
+      {
+        heading: "Imply necessity",
+        questions: ["What functional or non functional (maintainability/readability) improvement does this change bring?",
+          "Do you make these changes because of some standard or convention?",
+          "Has this commit a relation to a prior commit?",
+          "Is this commit part of a larger feature or goal?"
+        ],
+      },
+      {
+        heading: "Often neglected",
+        questions: ["What were the alternatives considered to the selected approach?",
+          "What are the constraints that lead to this approach?",
+          "What are the side effects of the approach taken?",
+          "How would you describe the code maturity?"
+        ],
+      }
+  ]
+
+  commitTypeQuestionMapping: {[commitype: string] : number[]} = {
+    "withoutType":
+      [4,3,0,1,2],
     "fix":
-      ["Describe the error scenario?","Did some tool urge you to fix errors?",
-        "What were the shortcomings of the implementation?",
-        "How does the proposed code solve the defect?",
-        "Did some tool urge you to fix errors?",
-        "Did a change in the runtime or development environment change?"],
+      [4,0,3,1,2],
     "feat":
-      ["Has this commit relation to prior commits?",
-        "Describe how this change makes a future change easier to land",
-        "What improvement does this change bring? Describe the before and after"],
+      [4,3,1,0,2],
     "chore":
-      ["Why is this change required?"],
+      [3,1,2,0],
     "docs":
-      ["Did some tool urge you to fix errors?"],
+      [3,1,2,0],
     "style":
-      ["Did some tool urge you to fix errors?"],
+      [3,1,2,0],
     "refactor":
-      ["Was the code not used anymore?",
-        "What future changes in the code get easier through this change?"],
+      [4,3,1,2,0],
     "perf":
-      ["Why is the performance improvement needed?"],
+      [4,3,1,2,0],
     "test":
-      []
+      [3,1,2,0],
   }
+
+
 
   commitTypeChanged() {
     let selectedType = this.getEnumKeyByEnumValue(CommitType,this.selectedCommit.type)
     if(selectedType !== null){
-      this.questionsForSelectedCommitType = this.questionsForCommitType[selectedType]
+      this.questionsForSelectedCommitType = this.commitTypeQuestionMapping[selectedType]
     } else{
       this.questionsForSelectedCommitType = []
     }
   }
 
   public answers: string[] = ["","","","","","",""]
+  randomMotivation: string;
 
   saveDiaryEntry() {
     console.log(this.answers)
