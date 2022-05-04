@@ -353,6 +353,18 @@ async def commitFiles(commitToPublish: CommitToPublish):
         tree,
         [parent.oid],
     )
+    modelScore = await checkMessage(commitToPublish)
+    commitProcess.statistics.numberOfCommits += 1
+    statisticPerCommit = {}
+    statisticPerCommit['uuid'] = commitProcess.statistics.uuid
+    statisticPerCommit['messageScore'] = modelScore
+    statisticPerCommit['secondsSpentAddingTheRational'] =  time.time() - commitProcess.statistics.finishedHunkAnsweringMilliseconds
+    statisticPerCommit['commitMessageLength'] = len(commitToPublish.message)
+    fieldnames = ['uuid', 'secondsSpentAddingTheRational', 'commitMessageLength', 'diffLength', 'issuesLinked','messageScore']
+
+    writeObjectToCsv("commits.csv",statisticPerCommit,fieldnames)
+
+    commitProcess.statistics.secondsSpentCommiting =  time.time() - commitProcess.statistics.startCommitingMilliseconds
 
 '''
 returns one hunk at a time to the frontend, in the order defined by the ordered hunks list
