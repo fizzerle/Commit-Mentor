@@ -118,7 +118,7 @@
         <br>
         <br>
         <div>
-          <button mat-raised-button matStepperNext>Do not stage the remaining hunks</button>
+          <button mat-raised-button [disabled]="getQuestionFormControls().length === 1 && getQuestionFormControls()[0].value === null" matStepperNext>Do not stage the remaining hunks</button>
         </div>
       </form>
     </mat-step>
