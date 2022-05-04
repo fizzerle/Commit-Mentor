@@ -198,47 +198,40 @@
             </div>
             <div style="margin-left: 2rem;width: 50%">
               <h2>Commit Message Preview</h2>
-              <p style="white-space: pre-line;margin-top: 1rem;font-size: 1.2rem; margin-bottom: 4rem">
+              <p style="white-space: pre-line;margin-top: 1rem;font-size: 1.2rem; margin-bottom: 2rem">
                 {{selectedCommit.finalMessage}}
               </p>
 
-              <h2>Files Included in the Commit:</h2>
-              <span>
-          <mat-tree [dataSource]="nestedDataSource" [treeControl]="nestedTreeControl" class="example-tree" style="margin-bottom: 1rem">
-            <mat-tree-node *matTreeNodeDef="let node" matTreeNodeToggle matTreeNodePadding>
-              <li>
-                <button mat-icon-button disabled></button>
-                <mat-checkbox class="checklist-branch-node"
-                              [checked]="node.selected"
-                              [disabled]="true"
-                              (change)="leafNodeSelect(node)"></mat-checkbox><div style="cursor: pointer; display: inline-flex" >{{node.path}}</div>
-              </li>
-            </mat-tree-node>
-
-              <mat-nested-tree-node *matTreeNodeDef="let node; when: hasNestedChild" >
-                <li>
-                <div class="mat-tree-node">
-                  <button mat-icon-button matTreeNodeToggle [attr.aria-label]="'Toggle ' + node.filename">
-                    <mat-icon class="mat-icon-rtl-mirror">
-                      {{nestedTreeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
-                    </mat-icon>
-                  </button>
-                  <mat-checkbox class="checklist-branch-node"
-                                [checked]="node.selected"
-                                [disabled]="true"
-                                [indeterminate]="descendantsPartiallySelected(node)"
-                                (change)="checkAllChildren(node,!node.selected)"></mat-checkbox><span>{{node.path}}</span>
-                </div>
-                  <ul>
-                    <div [class.example-tree-invisible]="!nestedTreeControl.isExpanded(node)" role="group">
-                      <ng-container matTreeNodeOutlet></ng-container>
+              <h2>Did you know?</h2>
+              <p style="white-space: pre-line;margin-top: 1rem; margin-bottom: 2rem">
+                {{randomMotivation}}
+              </p>
+              <ng-container *ngIf="questionsForSelectedCommitType.length !== 0">
+              <h2>How to improve message quality for commit type {{getEnumKeyByEnumValue(Type,selectedCommit.type)}}?</h2>
+              <div style="white-space: pre-line;margin-top: 1rem;margin-bottom: 4rem">
+                <div class="row">
+                  <div class="column">
+                    <div *ngFor="let index of questionsForSelectedCommitType">
+                      <h3>{{questionsForCommitType[index].heading}}</h3>
+                      <ul>
+                        <li *ngFor="let question of questionsForCommitType[index].questions">{{question}}</li>
+                      </ul>
                     </div>
-                  </ul>
-                </li>
-              </mat-nested-tree-node>
+                  </div>
+                  <div class="column">
+                    <div class="row"><span>Often</span></div>
+                    <div class="row"  style="margin-top: 26rem">
+                      <div class="long-arrow"></div>
+                    </div>
+                    <div class="row"><span>Seldom</span></div>
+                  </div>
+                  <div class="column" style="display: flex;align-items: center">
+                    <span>Usage for this commit type</span>
+                  </div>
+                </div>
 
-          </mat-tree>
-            </span>
+              </div>
+              </ng-container>
             </div>
           </div>
           <div style="display: flex; align-items: stretch; margin-top: 1rem">

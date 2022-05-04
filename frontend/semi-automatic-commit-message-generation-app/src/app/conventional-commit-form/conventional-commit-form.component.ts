@@ -80,6 +80,9 @@ export class ConventionalCommitFormComponent{
       .subscribe(() => {
         this.checkMessage()
       })
+
+    this.intervalId = setInterval(() => this.getMotivatingFact(), 30000);
+    this.getMotivatingFact()
   }
 
   private _getChildren = (node: trie_node) => { return observableOf(node.getChildren()); };
@@ -633,5 +636,9 @@ export class ConventionalCommitFormComponent{
         })
       })
     })
+  }
+
+  getMotivatingFact() {
+    this.randomMotivation = this.motivatingMessages[Math.floor(Math.random() * this.motivatingMessages.length)]
   }
 }
