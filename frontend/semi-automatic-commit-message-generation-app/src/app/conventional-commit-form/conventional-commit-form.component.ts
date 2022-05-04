@@ -362,6 +362,7 @@ export class ConventionalCommitFormComponent{
         return throwError("Request had a Error" + err)
       }))
       .subscribe((messageScore) => {
+        console.log("Response score was: ", messageScore)
         if(messageScore.body !== null){
           this.calculateMessageStrength(messageScore.body)
         }
@@ -369,11 +370,12 @@ export class ConventionalCommitFormComponent{
   }
 
   calculateMessageStrength(messageScore: number){
-    if(messageScore <= 0) this.messageStrength = 0;
-    if(messageScore > 0 && messageScore <= 1) this.messageStrength = 1;
-    if(messageScore > 1 && messageScore <= 2) this.messageStrength = 2;
-    if(messageScore > 2 && messageScore <= 2.5) this.messageStrength = 3;
-    if(messageScore > 2.5 ) this.messageStrength = 4;
+    console.log("messagescore was:", messageScore)
+    if(messageScore <= 0.6) this.messageStrength = 0;
+    if(messageScore > 0.6 && messageScore <= 0.7) this.messageStrength = 1;
+    if(messageScore > 0.7 && messageScore <= 0.8) this.messageStrength = 2;
+    if(messageScore > 0.8 && messageScore <= 0.9) this.messageStrength = 3;
+    if(messageScore > 0.9 ) this.messageStrength = 4;
   }
 
   commitCode(form: any) {
