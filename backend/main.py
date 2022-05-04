@@ -186,6 +186,11 @@ async def getDiff(path: str):
     logging.info("Got diff with untracked files")
     orderPatches(commitProcess)
 
+    commitProcess.statistics = Statistic()
+    commitProcess.statistics.date = datetime.now()
+    commitProcess.statistics.startCommitingMilliseconds = time.time()
+    commitProcess.statistics.uuid = str(uuid.uuid1())
+
     return {'files':commitProcess.fileNamesWithNewAndDeleted,'diff':commitProcess.pyGit2Diff.patch}
 
 '''
@@ -373,11 +378,14 @@ returns one hunk at a time to the frontend, in the order defined by the ordered 
 async def getQuestions(nextFile: bool = False):
     global commitProcess
 
+    if commitProcess.statistics.startHunkAnswering == 0:
+        commitProcess.statistics.startHunkAnswering = time.time()
+
     logging.info("Open Patches are: %s",commitProcess.openPatches)
     # when there are no hunks left
     if(commitProcess.pyGit2Diff.stats.files_changed == 0 or len(commitProcess.openPatches) == 0):
         logging.info("send Finish because no questions left")
-        return {"question": "Finsih"}
+        return {"question": "Finish"}
     if nextFile or len(commitProcess.openPatches[0][1]) == 0:
         del commitProcess.openPatches[0]
     logging.info("Open Patches after delete: %s", commitProcess.openPatches)
@@ -417,7 +425,12 @@ async def checkMessage(commitToPublish: CommitToPublish):
     global predictor
     global net
     global h
-    #message = "Issue <issue_link> ; when arrays differ in length, say so, but go ahead and find the first difference as usual to ease diagnosis"
+
+    if commitProcess.statistics.secondsSpentAnsweringHunks == 0:
+        commitProcess.statistics.finishedHunkAnsweringMilliseconds = time.time()
+        commitProcess.statistics.secondsSpentAnsweringHunks = time.time() - commitProcess.statistics.startHunkAnswering
+
+
     message = commitToPublish.message
     logging.info("Original Commit message: %s",message)
 
