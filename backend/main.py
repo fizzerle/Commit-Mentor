@@ -279,6 +279,38 @@ def getFilesToAddAndToRemove(commitToPublish):
             continue
     return (wholeFilesToAdd,wholeFilesToRemove)
 
+def writeArrayToCsv(name,arrayToWrite):
+    path = "./dataForStudy/"+name
+    fileExists = False
+    if os.path.isfile(path):
+        fileExists = True
+    with open(path, 'a+', encoding='UTF8', newline='') as f:
+        writer = csv.writer(f)
+        if not fileExists:
+            questionNumbers = list(range(len(arrayToWrite)-1))
+            header = ['question' + str(n) for n in questionNumbers]
+            header.insert(0,"uuid")
+            writer.writerow(header)
+        writer.writerow(arrayToWrite)
+
+def writeObjectToCsv(name,dictToWrite,fieldnames):
+    path = "./dataForStudy/"+name
+    fileExists = False
+    if os.path.isfile(path):
+        fileExists = True
+    with open(path, 'a+', encoding='UTF8', newline='') as f:
+        writer = csv.DictWriter(f,fieldnames=fieldnames)
+        if not fileExists:
+            writer.writeheader()
+        writer.writerow(dictToWrite)
+
+@app.post("/allCommitsComitted")
+def writeStatistics():
+    global commitProcess
+    statistics = commitProcess.statistics
+    fieldnames = [attr for attr in dir(statistics) if not callable(getattr(statistics, attr)) and not attr.startswith("__")]
+    writeObjectToCsv("commitProcess.csv",vars(statistics),fieldnames)
+
 '''
 Commits all the patches contained in the commitToPublish object
 we have to make a distinction between changes in existsing files and new or delted files because by applying
