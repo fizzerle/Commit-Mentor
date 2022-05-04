@@ -261,74 +261,93 @@
    <mat-step label="Diary">
      <h2>Diary Questions</h2>
 
-     <div style="margin-bottom: 1rem">
-       <h3>How useful where the hints what should be included in the message?</h3>
-       <span style="margin-right: 1rem">Not very useful</span>
-       <mat-radio-group [(ngModel)]="answers[0]" aria-label="How useful where the hints what should be included in the message?">
-         <mat-radio-button value="0"></mat-radio-button>
-         <mat-radio-button value="1"></mat-radio-button>
-         <mat-radio-button value="2"></mat-radio-button>
-         <mat-radio-button value="3"></mat-radio-button>
-         <mat-radio-button value="4"></mat-radio-button>
+     <section>
+       <header>
+         <div class="colQuestion"></div>
+         <div class="col">Strongly disagree</div>
+         <div class="col">Disagree</div>
+         <div class="col">Neutral</div>
+         <div class="col">Agree</div>
+         <div class="col">Strongly agree</div>
+       </header>
+     </section>
+
+       <mat-radio-group class="row"[(ngModel)]="answers[1]" aria-label="Question 2">
+         <span class="colQuestion">I would have split the commit in multiple commits without Commit Mentor</span>
+         <mat-radio-button class="col" value="0"></mat-radio-button>
+         <mat-radio-button class="col" value="1"></mat-radio-button>
+         <mat-radio-button class="col" value="2"></mat-radio-button>
+         <mat-radio-button class="col" value="3"></mat-radio-button>
+         <mat-radio-button class="col" value="4"></mat-radio-button>
        </mat-radio-group>
-       <span>Very useful</span>
-     </div>
-     <div style="margin-bottom: 1rem">
-       <h3>How useful was the message quality signal for this commit?</h3>
-       <span style="margin-right: 1rem">Not very useful</span>
-       <mat-radio-group [(ngModel)]="answers[1]" aria-label="Question 2">
-         <mat-radio-button value="0"></mat-radio-button>
-         <mat-radio-button value="1"></mat-radio-button>
-         <mat-radio-button value="2"></mat-radio-button>
-         <mat-radio-button value="3"></mat-radio-button>
-         <mat-radio-button value="4"></mat-radio-button>
-       </mat-radio-group>
-       <span>Very useful</span>
-     </div>
-     <div style="margin-bottom: 1rem">
-       <h3>Did the tool help you to describe the rationale behind the commit?</h3>
-       <span style="margin-right: 1rem">Not at all</span>
-       <mat-radio-group [(ngModel)]="answers[2]" aria-label="Question 2">
-         <mat-radio-button value="0"></mat-radio-button>
-         <mat-radio-button value="1"></mat-radio-button>
-         <mat-radio-button value="2"></mat-radio-button>
-         <mat-radio-button value="3"></mat-radio-button>
-         <mat-radio-button value="4"></mat-radio-button>
-       </mat-radio-group>
-       <span>Yes, totally</span>
-     </div>
-     <div style="margin-bottom: 1rem">
-       <h3>Did the tool help you to describe WHAT changed?</h3>
-       <span style="margin-right: 1rem">Not at all</span>
-       <mat-radio-group [(ngModel)]="answers[3]" aria-label="Question 2">
-         <mat-radio-button value="0"></mat-radio-button>
-         <mat-radio-button value="1"></mat-radio-button>
-         <mat-radio-button value="2"></mat-radio-button>
-         <mat-radio-button value="3"></mat-radio-button>
-         <mat-radio-button value="4"></mat-radio-button>
-       </mat-radio-group>
-       <span>Yes, totally</span>
-     </div>
-     <div style="margin-bottom: 1rem">
-       <h3>Have you found a issue while reviewing your code and had to go to fix it first?</h3>
-       <mat-radio-group [(ngModel)]="answers[4]" aria-label="Question 2">
-         <mat-radio-button value="0">Yes</mat-radio-button>
-         <mat-radio-button value="1">No</mat-radio-button>
-       </mat-radio-group>
-     </div>
-     <div style="margin-bottom: 1rem">
-       <h3>Did the tool help you to untangle the commit?</h3>
-       <mat-radio-group [(ngModel)]="answers[5]" aria-label="Question 2">
-         <mat-radio-button value="0">Yes</mat-radio-button>
+
+     <mat-radio-group class="row"[(ngModel)]="answers[2]" >
+       <span class="colQuestion">Commit Mentor was useful for untangling this commit</span>
+       <mat-radio-button class="col" value="0"></mat-radio-button>
+       <mat-radio-button class="col" value="1"></mat-radio-button>
+       <mat-radio-button class="col" value="2"></mat-radio-button>
+       <mat-radio-button class="col" value="3"></mat-radio-button>
+       <mat-radio-button class="col" value="4"></mat-radio-button>
+     </mat-radio-group>
+
+     <mat-radio-group class="row"[(ngModel)]="answers[3]" >
+       <span class="colQuestion">I added more details to the summary of the diff through the structured presentation of the hunks</span>
+       <mat-radio-button class="col" value="0"></mat-radio-button>
+       <mat-radio-button class="col" value="1"></mat-radio-button>
+       <mat-radio-button class="col" value="2"></mat-radio-button>
+       <mat-radio-button class="col" value="3"></mat-radio-button>
+       <mat-radio-button class="col" value="4"></mat-radio-button>
+     </mat-radio-group>
+
+     <mat-radio-group class="row"[(ngModel)]="answers[4]" >
+       <span class="colQuestion">The message quality bar provided me with a good indicaton if the rationale is sufficient</span>
+       <mat-radio-button class="col" value="0"></mat-radio-button>
+       <mat-radio-button class="col" value="1"></mat-radio-button>
+       <mat-radio-button class="col" value="2"></mat-radio-button>
+       <mat-radio-button class="col" value="3"></mat-radio-button>
+       <mat-radio-button class="col" value="4"></mat-radio-button>
+     </mat-radio-group>
+
+     <mat-radio-group class="row"[(ngModel)]="answers[5]" >
+       <span class="colQuestion">The hints shown motivated me to include more information in the commit message</span>
+       <mat-radio-button class="col" value="0"></mat-radio-button>
+       <mat-radio-button class="col" value="1"></mat-radio-button>
+       <mat-radio-button class="col" value="2"></mat-radio-button>
+       <mat-radio-button class="col" value="3"></mat-radio-button>
+       <mat-radio-button class="col" value="4"></mat-radio-button>
+     </mat-radio-group>
+
+     <mat-radio-group class="row"[(ngModel)]="answers[6]" >
+       <span class="colQuestion">The questions suggested helped me to improve my message</span>
+       <mat-radio-button class="col" value="0"></mat-radio-button>
+       <mat-radio-button class="col" value="1"></mat-radio-button>
+       <mat-radio-button class="col" value="2"></mat-radio-button>
+       <mat-radio-button class="col" value="3"></mat-radio-button>
+       <mat-radio-button class="col" value="4"></mat-radio-button>
+     </mat-radio-group>
+
+     <mat-radio-group class="row"[(ngModel)]="answers[7]" >
+       <span class="colQuestion">Overall commit mentor helped me to write a better commit message for this commit</span>
+       <mat-radio-button class="col" value="0"></mat-radio-button>
+       <mat-radio-button class="col" value="1"></mat-radio-button>
+       <mat-radio-button class="col" value="2"></mat-radio-button>
+       <mat-radio-button class="col" value="3"></mat-radio-button>
+       <mat-radio-button class="col" value="4"></mat-radio-button>
+     </mat-radio-group>
+
+     <div style="margin-bottom: 0.5rem; margin-top: 1rem">
+       <div style="margin-bottom: 0.5rem">Have you found a issue while reviewing your own code and had to fix it first?</div>
+       <mat-radio-group [(ngModel)]="answers[8]" aria-label="Question 2">
+         <mat-radio-button value="0" style="margin-right: 0.5rem">Yes</mat-radio-button>
          <mat-radio-button value="1">No</mat-radio-button>
        </mat-radio-group>
      </div>
 
-     <div style="margin-bottom: 1rem">
-       <h3>How was your experience using the tool for this commit?</h3>
+     <div style="margin-bottom: 1rem; margin-top: 1rem">
+       <div>How was your experience using the tool for this commit?</div>
        <mat-form-field class="noPadding" appearance="outline">
          <mat-label>How was your experience using the tool for this commit?</mat-label>
-         <textarea [(ngModel)]="answers[6]" matInput type="text"  cdkTextareaAutosize #autosize="cdkTextareaAutosize"cdkAutosizeMinRows="3" cdkAutosizeMaxRows="5" class="form-control" name="answer" [focusMe]="focus" value="" ></textarea>
+         <textarea [(ngModel)]="answers[9]" matInput type="text"  cdkTextareaAutosize #autosize="cdkTextareaAutosize"cdkAutosizeMinRows="3" cdkAutosizeMaxRows="5" class="form-control" name="answer" [focusMe]="focus" value="" ></textarea>
        </mat-form-field>
      </div>
 
