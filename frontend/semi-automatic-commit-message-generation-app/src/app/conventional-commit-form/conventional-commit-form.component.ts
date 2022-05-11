@@ -540,6 +540,12 @@ export class ConventionalCommitFormComponent{
     this.checkMessage()
   }
 
+  onCommitSelection2(commit: Commit) {
+    this.selectedCommit = commit;
+    this.commitTypeChanged()
+    this.checkMessage()
+  }
+
   private defaultColours = [
     'darkred',
     'orangered',
@@ -569,7 +575,7 @@ export class ConventionalCommitFormComponent{
     },
     {
       heading: "Illustrate requirement",
-      questions: ["Was something out of date",
+      questions: ["Was something out of date?",
         "Why did you need to make this change?",
         "Did the runtime or development environment change?"
       ],
@@ -605,8 +611,10 @@ export class ConventionalCommitFormComponent{
       [4,0,3,1,2],
     "feat":
       [4,3,1,0,2],
-    "chore":
-      [3,1,2,0],
+    "build":
+      [4,3,1,0,2],
+    "ci":
+      [4,3,1,0,2],
     "docs":
       [3,1,2,0],
     "style":
@@ -618,8 +626,6 @@ export class ConventionalCommitFormComponent{
     "test":
       [3,1,2,0],
   }
-
-
 
   commitTypeChanged() {
     let selectedType = this.getEnumKeyByEnumValue(CommitType,this.selectedCommit.type)
