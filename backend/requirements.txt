@@ -1,0 +1,9 @@
+pygit2
+fastapi
+uvicorn[standard]
+unidiff
+tensorflow-gpu --user
+transformers --user
+imbalanced-learn --user
+allennlp --user
+allennlp-models --user
