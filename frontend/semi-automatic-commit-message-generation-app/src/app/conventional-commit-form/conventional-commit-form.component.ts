@@ -540,12 +540,6 @@ export class ConventionalCommitFormComponent{
     this.checkMessage()
   }
 
-  onCommitSelection2(commit: Commit) {
-    this.selectedCommit = commit;
-    this.commitTypeChanged()
-    this.checkMessage()
-  }
-
   private defaultColours = [
     'darkred',
     'orangered',
