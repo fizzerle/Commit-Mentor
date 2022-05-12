@@ -474,6 +474,7 @@ Save the diary entry and statistic to disk so it can be later sent back to the a
 @app.post("/saveDiaryEntry")
 async def saveDiaryEntry(diaryAnswers: DiaryAnswers):
     global commitProcess
+    diaryAnswers[-1]= diaryAnswers[-1].replace("\n","<enter>")
     diaryAnswers.answers.insert(0,commitProcess.statistics.uuid)
     writeArrayToCsv("diaryQuestionAnsweres.csv",diaryAnswers.answers)
     pass
