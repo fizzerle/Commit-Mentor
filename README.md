@@ -23,3 +23,6 @@ change to the frontend directory and run the following command to install all de
 To start the frontend:
 
     ng serve
+
+Link to download the weights for the fine tuned BERT model: 
+https://we.tl/t-3SrUx6k2Pc
