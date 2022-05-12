@@ -513,7 +513,7 @@ def filter_tokens(length, tokens, tags):
     for i in range(1, length):
         if str(tokens[i]).startswith('@'):
             indices.append(i)
-        elif str(tokens[i]).isalnum() and not str(tokens[i]).islower():
+        elif str(tokens[i]).isalnum():
             if str(tags[i]).startswith("NN"):
                 # if str(tokens[i]) == 'file_name' or str(tokens[i]) == 'version':
                 #     continue
