@@ -34,6 +34,7 @@ class CommitProcess:
     pyGit2Repository = None
     uniDiffPatches = None
     statistics = None
+    commitScores = []
 
 class Commit(BaseModel):
     message: str
@@ -49,6 +50,7 @@ class Patch(BaseModel):
     patchNumber: int
     hunks: List[Hunk]
 class CommitToPublish(BaseModel):
+    id: int
     message: str
     patches: List[Patch]
 
@@ -363,16 +365,21 @@ async def commitFiles(commitToPublish: CommitToPublish):
         tree,
         [parent.oid],
     )
-    modelScore = await checkMessage(commitToPublish)
+    finalModelScore = await checkMessage(commitToPublish)
     commitProcess.statistics.numberOfCommits += 1
-    statisticPerCommit = {}
-    statisticPerCommit['uuid'] = commitProcess.statistics.uuid
-    statisticPerCommit['messageScore'] = modelScore
-    statisticPerCommit['secondsSpentAddingTheRational'] =  time.time() - commitProcess.statistics.finishedHunkAnsweringMilliseconds
-    statisticPerCommit['commitMessageLength'] = len(commitToPublish.message)
-    fieldnames = ['uuid', 'secondsSpentAddingTheRational', 'commitMessageLength', 'diffLength', 'issuesLinked','messageScore']
+    statisticPerCommit = StatisticPerCommit()
 
-    writeObjectToCsv("commits.csv",statisticPerCommit,fieldnames)
+    existsScore = [item for item in commitProcess.commitScores if item[0] == commitToPublish.id]
+    if(len(existsScore) != 0):
+        statisticPerCommit.messageScoreAfterHunkViewing= existsScore[0][1]
+
+    statisticPerCommit.uuid = commitProcess.statistics.uuid
+    statisticPerCommit.commitMessage = commitToPublish.message.replace("\n","<enter>")
+    statisticPerCommit.messageScoreFinal= finalModelScore
+    statisticPerCommit.secondsSpentAddingTheRational =  time.time() - commitProcess.statistics.finishedHunkAnsweringMilliseconds
+    statisticPerCommit.commitMessageLength = len(commitToPublish.message)
+    fieldnames = [attr for attr in dir(statisticPerCommit) if not callable(getattr(statisticPerCommit, attr)) and not attr.startswith("__")]
+    writeObjectToCsv("commits.csv",vars(statisticPerCommit),fieldnames)
 
     commitProcess.statistics.secondsSpentCommiting =  time.time() - commitProcess.statistics.startCommitingMilliseconds
 
@@ -452,6 +459,10 @@ async def checkMessage(commitToPublish: CommitToPublish):
                                 return_tensors='pt')
     X = message_tokens['input_ids']
     modelScore = test_model(X, net, h)
+
+    existsScore = [item for item in commitProcess.commitScores if item[0] == commitToPublish.id]
+    if(len(existsScore) == 0):
+        commitProcess.commitScores.append([commitToPublish.id, modelScore])
     return modelScore
 
 '''
