@@ -527,11 +527,11 @@ def filter_tokens(length, tokens, tags):
     return indices, tokens
 
 def search_in_patches(patches, indices, tokens):
-    patches = []
     fount_indices = []
     found_tokens = []
     for index in indices:
         for patch in patches:
+            print(str(patch))
             if str(patch).find(tokens[index]) > -1:
                 if index>0 and index<len(tokens)-1 and str(tokens[index-1])=="'" and str(tokens[index+1])=="'":
                     found_tokens.append("'" + str(tokens[index]) + "'")
