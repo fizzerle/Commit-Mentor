@@ -4,6 +4,7 @@ import {QuestionHunk} from "./QuestionHunk";
 export class Commit {
 
     constructor(
+      public id: number,
       public type?: CommitType,
       public scope?: string,
       public short_description?: string,

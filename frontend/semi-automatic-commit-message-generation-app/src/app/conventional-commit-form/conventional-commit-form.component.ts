@@ -48,7 +48,7 @@ export class ConventionalCommitFormComponent{
   openHunks: number = 1;
   allHunksForCurrentFile: number = 1;
   private _projectPath: string ="";
-  selectedCommit: Commit = new Commit();
+  selectedCommit: Commit = new Commit(0);
   questionsForSelectedCommitType: number[] = [];
   private intervalId: number;
 
@@ -156,7 +156,7 @@ export class ConventionalCommitFormComponent{
     this.commits = []
     this.userForm.getRawValue().answers.forEach((answer: string,index:number) => {
       if (answer !== null) {
-        const newCommit = new Commit(undefined,undefined,answer)
+        const newCommit = new Commit(this.commits.length,undefined,undefined,answer)
         newCommit.mainHunk = index
         newCommit.hunks.push(index)
         this.commits.push(newCommit)
@@ -353,7 +353,8 @@ export class ConventionalCommitFormComponent{
       }
     })
 
-    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches)
+    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches,this.selectedCommit.id)
+
     this.apiService.checkMessage(commitToPublish).pipe(
       catchError((err) => {
         this.snackBar.open("Request had a Error," + err,"",{
@@ -394,7 +395,7 @@ export class ConventionalCommitFormComponent{
       }
     })
 
-    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches)
+    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches,this.selectedCommit.id)
     this.apiService.postCommit(commitToPublish).pipe(
       catchError((err) => {
         this.committing = false;
