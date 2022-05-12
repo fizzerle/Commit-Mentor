@@ -70,10 +70,12 @@ class Statistic:
 class StatisticPerCommit:
     uuid: str
     secondsSpentAddingTheRational: int
+    commitMessage: str
     commitMessageLength: int
     diffLength: int
     issuesLinked: bool
-    messageScore: float
+    messageScoreAfterHunkViewing: float
+    messageScoreFinal: float
 
 tokenizer = None
 h = None
