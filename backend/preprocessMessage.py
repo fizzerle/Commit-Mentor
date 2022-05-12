@@ -616,7 +616,11 @@ def replace_tokens(message, tokens):
 
     return new_message
 
+def replace_newLine(message):
+    return message.replace("\n","<enter>")
+
 def preprocessMessageForModel(message,patches,filepaths, predictor):
+    message = replace_newLine(message)
     message = find_url(message)
     message = find_version(message)
     message = find_rawCode(message)
@@ -628,8 +632,9 @@ def preprocessMessageForModel(message,patches,filepaths, predictor):
     message = replace_file_name(message,filepaths)
 
     tokens, tags, length = allennlp_tag(message, predictor)
-
+    print(tokens,tags,length)
     indices, tokens = filter_tokens(length, tokens, tags)
+    print(indices,tokens)
     if len(indices) > 0:
         fount_indices, found_tokens = search_in_patches(patches, indices, tokens)
         if len(fount_indices) > 0:

@@ -537,6 +537,7 @@ export class ConventionalCommitFormComponent{
   onCommitSelection(commit: Commit) {
     this.selectedCommit = commit;
     this.commitTypeChanged()
+    this.buildCommitMessageStringFromCommit(this.selectedCommit)
     this.checkMessage()
   }
 
@@ -563,7 +564,7 @@ export class ConventionalCommitFormComponent{
     {
       heading: "Describe Issue",
       questions: ["Where and how did the error occur?",
-        "Is the change due to a warnings or errors of a tool?",
+        "Is the change due to warnings or errors of a tool?",
         "What was the shortcoming of the current solution?"
       ],
     },

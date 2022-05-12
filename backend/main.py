@@ -1,4 +1,6 @@
+from genericpath import exists
 from fastapi import FastAPI, HTTPException
+from numpy import number
 import pygit2
 from typing import List
 from pydantic import BaseModel
@@ -474,7 +476,7 @@ Save the diary entry and statistic to disk so it can be later sent back to the a
 @app.post("/saveDiaryEntry")
 async def saveDiaryEntry(diaryAnswers: DiaryAnswers):
     global commitProcess
-    diaryAnswers[-1]= diaryAnswers[-1].replace("\n","<enter>")
+    diaryAnswers.answers[-1]= diaryAnswers.answers[-1].replace("\n","<enter>")
     diaryAnswers.answers.insert(0,commitProcess.statistics.uuid)
     writeArrayToCsv("diaryQuestionAnsweres.csv",diaryAnswers.answers)
     pass
