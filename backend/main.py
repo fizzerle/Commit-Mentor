@@ -14,6 +14,7 @@ from datetime import datetime
 import time
 import uuid
 import csv
+import uvicorn
 
 app = FastAPI()
 
@@ -493,3 +494,7 @@ async def setupTokenizerAndModel():
     #predictor = pretrained.load_predictor("structured-prediction-constituency-parser")
 
     net, h, tokenizer = setupModel()
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
