@@ -340,7 +340,6 @@ export class ConventionalCommitFormComponent{
   diffLoading = false;
 
   checkMessage() {
-    console.log("committing ", this.commitPreviewMessage)
     let patches: Patch[] = []
 
     this.selectedCommit.hunks.forEach((hunkNumber) => {
