@@ -95,10 +95,9 @@ class bert_lstm(nn.Module):
 def test_model(input,net,h):
     output = net(input, h)
     logging.info("Model predicted: %s", output)
-    output = torch.add(output, tensor([2.3, 0]))
-    output = torch.subtract(output, tensor([0, 1]))
     logging.info("Model predicted: %s", output)
-    output = torch.nn.Softmax(dim=1)(output)
+    #output = torch.nn.Softmax(dim=1)(output)
+    output = torch.sigmoid(output)
     logging.info("Response Score: %s",output.data[0][1].data.item())
     return output.data[0][1].data.item()
 
