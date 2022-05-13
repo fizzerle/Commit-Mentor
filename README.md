@@ -17,7 +17,7 @@
 
 To start the backend:
 
-    uvicorn main:app --reload
+    uvicorn main:app
 
 ## Setup for the frontend
 **_NOTE:_**  recent version of node should be installed
