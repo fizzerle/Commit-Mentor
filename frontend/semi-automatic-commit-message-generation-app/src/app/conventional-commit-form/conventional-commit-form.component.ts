@@ -631,7 +631,7 @@ export class ConventionalCommitFormComponent{
     }
   }
 
-  public answers: string[] = ["","","","","","",""]
+  public answers: string[] = ["","","","","","","","","","","",""]
   randomMotivation: string;
 
   saveDiaryEntry() {
