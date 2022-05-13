@@ -15,7 +15,7 @@
 **Copy** the parser model (https://allennlp.s3.amazonaws.com/models/elmo-constituency-parser-2020.02.10.tar.gz) in the folder **/backend/tools**
 
 
-To start the backend:
+To start the backend **run this command in the backend folder**:
 
     uvicorn main:app
 
@@ -28,6 +28,6 @@ change to the frontend directory and run the following command to install all de
 
     npm install
 
-To start the frontend:
+To start the frontend **run this command in the frontend folder**:
 
     ng serve
