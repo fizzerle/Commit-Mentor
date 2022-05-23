@@ -10,7 +10,7 @@
     
     pip install -r requirements.txt
 
-**Copy** the weights file (https://we.tl/t-3SrUx6k2Pc) in the **/backend** folder
+**Copy** the weights file (https://we.tl/t-GQJUCjTSt9) in the **/backend** folder
 
 **Copy** the parser model (https://allennlp.s3.amazonaws.com/models/elmo-constituency-parser-2020.02.10.tar.gz) in the folder **/backend/tools**
 
