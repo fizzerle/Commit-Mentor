@@ -7,7 +7,7 @@ import logging
 
 np.random.seed(0)
 torch.manual_seed(0)
-USE_CUDA = torch.cuda.is_available()
+USE_CUDA = False
 if USE_CUDA:
     torch.cuda.manual_seed(0)
 
