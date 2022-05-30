@@ -369,6 +369,33 @@ export class ConventionalCommitFormComponent{
       })
   }
 
+  getRecommendationOfOpenAi() {
+    let patches: Patch[] = []
+
+    this.selectedCommit.hunks.forEach((hunkNumber) => {
+      let questionHunk = this.questionHunks[hunkNumber]
+      let found = patches.find((patch) => {patch.patchNumber === questionHunk.fileNumber});
+      if(found){
+        found.hunks.push(new Hunk(questionHunk.hunkNumber,this.selectedCommit.finalMessage))
+      }else {
+        patches.push(new Patch(questionHunk.fileNumber,questionHunk.filePath,[new Hunk(questionHunk.hunkNumber,"")],))
+      }
+    })
+
+    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches,this.selectedCommit.id)
+
+    this.apiService.getRecommendationOfOpenAi(commitToPublish).pipe(
+      catchError((err) => {
+        this.snackBar.open("Request had a Error," + err,"",{
+          duration: 2000
+        })
+        return throwError("Request had a Error" + err)
+      }))
+      .subscribe((messageScore) => {
+        console.log("Response score was: ", messageScore)
+      })
+  }
+
   calculateMessageStrength(messageScore: number){
     console.log("messagescore was:", messageScore)
     if(messageScore <= 0.6) this.messageStrength = 0;
