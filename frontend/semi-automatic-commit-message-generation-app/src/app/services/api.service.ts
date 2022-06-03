@@ -68,4 +68,16 @@ export class ApiService {
     return throwError(
       'Something bad happened; please try again later.');
   }
+
+  getCommitMessageRecommendationOfOpenAi(commitToPublish: CommitToPublish) {
+    return this.http.post<string>("/api/commitMessageRecommendation",commitToPublish,{ observe: 'response' }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getRecommendedQuestionOfOpenAi(commitToPublish: CommitToPublish) {
+    return this.http.post<string[]>("/api/recommendedQuestions",commitToPublish,{ observe: 'response' }).pipe(
+      catchError(this.handleError)
+    );
+  }
 }

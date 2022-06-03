@@ -1,4 +1,5 @@
 from genericpath import exists
+from click import prompt
 from fastapi import FastAPI, HTTPException
 from numpy import number
 import pygit2
@@ -17,6 +18,8 @@ import time
 import uuid
 import csv
 import uvicorn
+import openai
+from transformers import GPT2TokenizerFast
 
 app = FastAPI()
 
@@ -81,6 +84,7 @@ class StatisticPerCommit:
     messageScoreFinal: float
 
 tokenizer = None
+tokenizerGPT2 = None
 h = None
 net = None
 predictor = None
@@ -204,6 +208,141 @@ async def getDiff(path: str):
     commitProcess.statistics.uuid = str(uuid.uuid1())
 
     return {'files':commitProcess.fileNamesWithNewAndDeleted,'diff':commitProcess.pyGit2Diff.patch}
+
+def createDiff(commitToPublish,uniDiffPatches):
+    global commitProcess
+    filesSelectedByTheUser = commitProcess.filesSelectedByTheUser
+    os.chdir(commitProcess.projectPath)
+    for patch in commitToPublish.patches:
+        diffToApply = ""
+        uniDiffPatch = None
+        #searching is needed because unidiff parsing changes the order
+        for unidiffPat in uniDiffPatches:
+            if patch.filename == unidiffPat.target_file[2:]:
+                uniDiffPatch = unidiffPat
+        fileStatus = commitProcess.pyGit2Repository.status()[patch.filename]
+        # skip new or delted files because they cannot be added or delted via a patch, they are treated seperately
+        if fileStatus == pygit2.GIT_STATUS_WT_NEW or fileStatus == pygit2.GIT_STATUS_WT_DELETED:
+            continue
+        filesSelectedByTheUser.append(patch.filename)
+        source = ""
+        target = ""
+        if not uniDiffPatch.is_binary_file:
+            source = "--- %s%s\n" % (
+                uniDiffPatch.source_file,
+                '\t' + uniDiffPatch.source_timestamp if uniDiffPatch.source_timestamp else '')
+            target = "+++ %s%s\n" % (
+                uniDiffPatch.target_file,
+                '\t' + uniDiffPatch.target_timestamp if uniDiffPatch.target_timestamp else '')
+        diffToApply += str(uniDiffPatch.patch_info) + source + target
+        hunkPatch = ""
+        for hunk in patch.hunks:
+            hunkPatch = hunkPatch + "\n" + diffToApply + str(uniDiffPatch[hunk.hunkNumber])
+            # This is need because: https://stackoverflow.com/questions/10785131/line-endings-in-python
+            hunkPatch = hunkPatch.replace("\r\n", "\n").replace("\r", "\n")
+    return hunkPatch
+
+'''API endpoint which calls openai and returns a commit message recommendation from GPT-3'''
+@app.post("/commitMessageRecommendation")
+async def getCommitMessageRecommendation(commitToPublish: CommitToPublish):
+    global commitProcess
+    global tokenizerGPT2
+    diff = createDiff(commitToPublish, commitProcess.uniDiffPatches)
+    alternativeAddition = "\n\nWrite a high quality and elabroate commit message about the code change above:"
+    fullPrompt = diff + alternativeAddition
+
+    logging.info("number of tokens: %i", len(tokenizerGPT2(fullPrompt)['input_ids']))
+    if (len(tokenizerGPT2(fullPrompt)['input_ids'])+256 > 2049):
+        #shorten diff to fit the input size
+        logging.info("diff length %i", len(diff))
+        logging.info("model prompt length %i",len(alternativeAddition))
+        truncatedDiff = tokenizerGPT2.decode(tokenizerGPT2(diff,truncation=True).input_ids)
+        fullPrompt = truncatedDiff[:-(len(alternativeAddition) + 64)] + alternativeAddition
+        logging.info("shortend length: %i", len(fullPrompt))
+    # "text-davinci-002"
+    response = openai.Completion.create(
+        engine="text-babbage-001",
+        prompt=fullPrompt,
+        temperature=0.7,
+        max_tokens=256,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+    )
+    return response.choices[0].text
+
+
+'''API endpoint which calls openai and returns a commit message recommendation from GPT-3'''
+@app.post("/recommendedQuestions")
+async def getRecommendedQuestion(commitToPublish: CommitToPublish):
+    logging.info("Getting recommended questions")
+    global commitProcess
+    global tokenizerGPT2
+    diff = createDiff(commitToPublish, commitProcess.uniDiffPatches)
+
+    alternativeAddition = "A high quality summary of the code change above and a rationale why the code was changed:"
+    testQuestion = "What was the shortcoming of the current solution?"
+
+    testQuestions = ["Where and how did the error occur?",
+        "Is the change due to warnings or errors of a tool?",
+        "What was the shortcoming of the current solution?",
+        "Was something out of date?",
+        "Why did you need to make this change?",
+        "Did the runtime or development environment change?",
+        "What improvement does your change bring?",
+        "How have you fixed the problem?",
+        "What functional or non functional (maintainability/readability) improvement does this change bring?",
+        "Do you make these changes because of some standard or convention?",
+        "Has this commit a relation to a prior commit?",
+        "Is this commit part of a larger feature or goal?",
+        "What were the alternatives considered to the selected approach?",
+        "What are the constraints that lead to this approach?",
+        "What are the side effects of the approach taken?",
+        "How would you describe the code maturity?"
+      ]
+
+    prompts = []
+    answers = []
+    for question in testQuestions:
+        modelPrompt =  question
+        fullPrompt = diff +"\n\n"+ modelPrompt
+
+        logging.info("number of tokens: %i", len(tokenizerGPT2(fullPrompt)['input_ids']))
+        if (len(tokenizerGPT2(fullPrompt)['input_ids'])+256 > 2049):
+            #shorten diff to fit the input size
+            logging.info("diff length %i", len(diff))
+            logging.info("model prompt length %i",len(modelPrompt))
+            truncatedDiff = tokenizerGPT2.decode(tokenizerGPT2(diff,truncation=True).input_ids)
+            fullPrompt = truncatedDiff[:-(len(modelPrompt) + 64)] + modelPrompt
+            logging.info("shortend length: %i", len(fullPrompt))
+        prompts.append(fullPrompt)
+    
+    responses = openai.Completion.create(
+        engine="text-babbage-001",
+        prompt=prompts,
+        temperature=0.7,
+        max_tokens=256,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+    )
+    logging.info("Got Questions from OpenAI")
+    for index, response in enumerate(responses.choices):
+        # check if the response is empty or source code, then we don't have to check the message score
+        if(len(response.text.split('\n')) < 5 and response.text != ''):
+            answers.append([testQuestions[index],response.text,0])
+    
+    for answer in answers:
+        commitToPublish = CommitToPublish(id = commitToPublish.id,message = commitToPublish.message + answer[1][0:250], patches = commitToPublish.patches)
+        answer[2] = checkMessage(commitToPublish)
+    
+    logging.info("Got the score for all messages")
+    def sortByScore(item):
+        return item[1]
+    answers.sort(key=sortByScore)
+    answers = answers[0:3]
+    
+    return [item[0] for item in answers]
 
 '''
 Unstages all files in the git project directory defined
@@ -370,7 +509,7 @@ async def commitFiles(commitToPublish: CommitToPublish):
         tree,
         [parent.oid],
     )
-    finalModelScore = await checkMessage(commitToPublish)
+    finalModelScore = checkMessage(commitToPublish)
     commitProcess.statistics.numberOfCommits += 1
     statisticPerCommit = StatisticPerCommit()
 
@@ -436,7 +575,7 @@ preprocesses the messages to be able to feed the message to the pretrained bert 
 return the score that the model calculated
 '''
 @app.post("/checkMessage")
-async def checkMessage(commitToPublish: CommitToPublish):
+def checkMessage(commitToPublish: CommitToPublish):
     global tokenizer
     global commitProcess
     global predictor
@@ -454,7 +593,7 @@ async def checkMessage(commitToPublish: CommitToPublish):
     filePaths = []
     for patch in commitToPublish.patches:
         filePaths.append(patch.filename)
-    message = preprocessMessageForModel(message,commitProcess.uniDiffPatches,filePaths, predictor)
+    message = preprocessMessageForModel(message,createDiff(commitToPublish,commitProcess.uniDiffPatches),filePaths, predictor)
 
     logging.info("Preprocessed Commit message: %s",message)
     message_tokens = tokenizer(message,
@@ -488,14 +627,17 @@ on startup load ELMO and BERT model one time to make consecutive requests faster
 async def setupTokenizerAndModel():
     global tokenizer
     global predictor
+    global tokenizerGPT2
     global net
     global h
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+    openai.organization = "org-ky6BiuvqGjUO6kdRdRmIc3L6"
+    openai.api_key = "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"
     # Predictor used for preprocessing steps
     predictor = Predictor.from_path("./tools/elmo-constituency-parser-2020.02.10.tar.gz")
     #other method to not load the predictor from local archive
     #predictor = pretrained.load_predictor("structured-prediction-constituency-parser")
-
+    tokenizerGPT2 = GPT2TokenizerFast.from_pretrained("gpt2", model_max_length=2049)
     net, h, tokenizer = setupModel()
 
 
