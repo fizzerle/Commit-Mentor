@@ -296,8 +296,11 @@ export class ConventionalCommitFormComponent{
       var diffFile = Diff2Html.parse(this.diff);
       diffFile = [diffFile[questionHunk.fileNumber]]
       diffFile[0].blocks = [diffFile[0].blocks[questionHunk.hunkNumber]]
-      let outputHtml = Diff2Html.html(diffFile,{ drawFileList: false, matching: 'lines',outputFormat: 'side-by-side', });
-      questionHunk.diff = outputHtml
+      questionHunk.diff = Diff2Html.html(diffFile, {
+        drawFileList: false,
+        matching: 'lines',
+        outputFormat: 'side-by-side',
+      })
       this.questionHunks.push(questionHunk);
       (this.userForm.get('answers') as FormArray).push(
         this.fb.control(null)
