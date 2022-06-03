@@ -57,6 +57,7 @@ export class ConventionalCommitFormComponent{
     "if commit messages are well structured they can be used for automatic changelog creation and triggering of automation's like deployments or running of specific tests",
     "maintenance can typically be expected to use up 70-90% of the overall project budget, documentation like commit messages help to improve maintainability",
     "commit messages can be used for automatic bug localisation "]
+  private recommendedQuestions: string[] = []
 
   @Input() set projectPath(value: string) {
     this._projectPath = value;
@@ -219,8 +220,7 @@ export class ConventionalCommitFormComponent{
         return
       }
       this.parsedDiff = Diff2Html.parse(data.diff, { drawFileList: true, matching: 'lines' });
-      let outputHtml = Diff2Html.html(this.parsedDiff, { drawFileList: true, matching: 'lines' });
-      this.outputHtml = outputHtml;
+      this.outputHtml = Diff2Html.html(this.parsedDiff, {drawFileList: true, matching: 'lines'});
       console.log(this.parsedDiff)
       for (let path of data.files){
         this.trie.insert(path[0],path[0],path[1])
@@ -367,10 +367,10 @@ export class ConventionalCommitFormComponent{
       })
   }
 
-  getRecommendationOfOpenAi() {
+  createCommitToPublish(commit: Commit){
     let patches: Patch[] = []
 
-    this.selectedCommit.hunks.forEach((hunkNumber) => {
+    commit.hunks.forEach((hunkNumber) => {
       let questionHunk = this.questionHunks[hunkNumber]
       let found = patches.find((patch) => {patch.patchNumber === questionHunk.fileNumber});
       if(found){
@@ -456,7 +456,7 @@ export class ConventionalCommitFormComponent{
   }
 
   allCommitsCommited (){
-    let numberOfCommitedCommits =  this.commits.filter(commit => commit.commited === true).length
+    let numberOfCommitedCommits =  this.commits.filter(commit => commit.commited).length
     return numberOfCommitedCommits === this.commits.length
   }
 
@@ -571,6 +571,7 @@ export class ConventionalCommitFormComponent{
 
   onCommitSelection(commit: Commit) {
     this.selectedCommit = commit;
+    console.log(this.questionHunks[this.selectedCommit.id].diff)
     this.commitTypeChanged()
     this.buildCommitMessageStringFromCommit(this.selectedCommit)
     this.checkMessage()
@@ -685,5 +686,9 @@ export class ConventionalCommitFormComponent{
 
   getMotivatingFact() {
     this.randomMotivation = this.motivatingMessages[Math.floor(Math.random() * this.motivatingMessages.length)]
+  }
+
+  determineQuestionColor(question: string) {
+    return this.selectedCommit.recommendedQuestions.includes(question)
   }
 }

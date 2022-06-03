@@ -294,9 +294,6 @@ def allennlp_tag(message, predictor):
     tokens = result['tokens']
     tags = result['pos_tags']
 
-    print("tokens",tokens)
-    print("tags",tags)
-
     indices = []
     for i in range(len(tokens)):
         s = str(tokens[i])
@@ -500,10 +497,7 @@ def allennlp_tag(message, predictor):
     length = len(tokens)
     tokens = ' '.join(tokens)
     tags = ' '.join(tags)
-    print('----------------------------------------------------------------------')
-    print(tokens)
-    print(tags)
-    # print(trees)
+
     return tokens, tags, length
 
 def filter_tokens(length, tokens, tags):
@@ -526,19 +520,17 @@ def filter_tokens(length, tokens, tags):
 
     return indices, tokens
 
-def search_in_patches(patches, indices, tokens):
+def search_in_patches(patch, indices, tokens):
     fount_indices = []
     found_tokens = []
     for index in indices:
-        for patch in patches:
-            print(str(patch))
-            if str(patch).find(tokens[index]) > -1:
-                if index>0 and index<len(tokens)-1 and str(tokens[index-1])=="'" and str(tokens[index+1])=="'":
-                    found_tokens.append("'" + str(tokens[index]) + "'")
-                else:
-                    found_tokens.append(tokens[index])
-                fount_indices.append(index)
-                break
+        if str(patch).find(tokens[index]) > -1:
+            if index>0 and index<len(tokens)-1 and str(tokens[index-1])=="'" and str(tokens[index+1])=="'":
+                found_tokens.append("'" + str(tokens[index]) + "'")
+            else:
+                found_tokens.append(tokens[index])
+            fount_indices.append(index)
+            break
 
     return fount_indices, list(set(found_tokens))
 
@@ -632,9 +624,7 @@ def preprocessMessageForModel(message,patches,filepaths, predictor):
     message = replace_file_name(message,filepaths)
 
     tokens, tags, length = allennlp_tag(message, predictor)
-    print(tokens,tags,length)
     indices, tokens = filter_tokens(length, tokens, tags)
-    print(indices,tokens)
     if len(indices) > 0:
         fount_indices, found_tokens = search_in_patches(patches, indices, tokens)
         if len(fount_indices) > 0:

@@ -13,6 +13,7 @@ export class Commit {
       public footer?: string,
       public closesIssue?: string,
       public hunks: number[] = [],
+      public recommendedQuestions: string[] = [],
       public mainHunk?: number,
       public commited = false,
       public finalMessage = ''
