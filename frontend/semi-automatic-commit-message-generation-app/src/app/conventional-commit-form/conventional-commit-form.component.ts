@@ -1,17 +1,17 @@
-import {Component, ElementRef, Input, OnInit, ViewChild} from '@angular/core';
+import {Component, Input, ViewChild} from '@angular/core';
 import {Commit} from "../model/commit";
 import {CommitType} from "../model/CommitType";
 import {StepperSelectionEvent} from "@angular/cdk/stepper";
 import * as Diff2Html from "diff2html";
-import {Form, FormArray, FormBuilder, FormControl, FormGroup} from "@angular/forms";
+import {FormArray, FormBuilder, FormControl, FormGroup} from "@angular/forms";
 import {ApiService} from "../services/api.service";
 import {MatStepper} from "@angular/material/stepper";
 import {trie, trie_node} from "../util/Trie";
 import {MatTreeNestedDataSource} from "@angular/material/tree";
 import {NestedTreeControl} from "@angular/cdk/tree";
-import {BehaviorSubject, interval, Observable, of as observableOf, Subject, throwError} from 'rxjs';
+import {BehaviorSubject, of as observableOf, Subject, throwError} from 'rxjs';
 import {DiffFile} from "diff2html/lib/types";
-import {catchError, debounce, debounceTime} from "rxjs/operators";
+import {catchError, debounceTime} from "rxjs/operators";
 import {MatSnackBar} from "@angular/material/snack-bar";
 import {QuestionHunk} from "../model/QuestionHunk";
 import {CommitToPublish} from "../model/commitToPublish";
@@ -173,7 +173,16 @@ export class ConventionalCommitFormComponent{
     })
     this.selectedCommit = this.commits[0]
     this.buildCommitMessageStringFromCommit(this.selectedCommit)
-    //transformAnswersInAMessageText()
+
+    //get a openai recommended message for every commit
+    this.commits.forEach((commit) => {
+      this.getCommitMessageRecommendationOfOpenAi(commit)
+    })
+
+    //get answers to rationale Questions of OpenAI
+    this.commits.forEach((commit) => {
+      this.getQuestionRecommendationOfOpenAi(commit)
+    })
 
   }
 
@@ -340,21 +349,7 @@ export class ConventionalCommitFormComponent{
   diffLoading = false;
 
   checkMessage() {
-    let patches: Patch[] = []
-
-    this.selectedCommit.hunks.forEach((hunkNumber) => {
-      let questionHunk = this.questionHunks[hunkNumber]
-      let found = patches.find((patch) => {patch.patchNumber === questionHunk.fileNumber});
-      if(found){
-        found.hunks.push(new Hunk(questionHunk.hunkNumber,this.selectedCommit.finalMessage))
-      }else {
-        patches.push(new Patch(questionHunk.fileNumber,questionHunk.filePath,[new Hunk(questionHunk.hunkNumber,"")],))
-      }
-    })
-
-    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches,this.selectedCommit.id)
-
-    this.apiService.checkMessage(commitToPublish).pipe(
+    this.apiService.checkMessage(this.createCommitToPublish(this.selectedCommit)).pipe(
       catchError((err) => {
         this.snackBar.open("Request had a Error," + err,"",{
           duration: 2000
@@ -382,19 +377,42 @@ export class ConventionalCommitFormComponent{
       }
     })
 
-    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches,this.selectedCommit.id)
+    return new CommitToPublish(commit.finalMessage,patches,commit.id)
+  }
 
-    this.apiService.getRecommendationOfOpenAi(commitToPublish).pipe(
+  getCommitMessageRecommendationOfOpenAi(commit: Commit) {
+    this.apiService.getCommitMessageRecommendationOfOpenAi(this.createCommitToPublish(commit)).pipe(
       catchError((err) => {
         this.snackBar.open("Request had a Error," + err,"",{
           duration: 2000
         })
         return throwError("Request had a Error" + err)
       }))
-      .subscribe((messageScore) => {
-        console.log("Response score was: ", messageScore)
+      .subscribe((openAIRecommendation) => {
+        console.log("Model prediction was: ", openAIRecommendation)
+        if(openAIRecommendation.body !== null || openAIRecommendation.body !== ''){
+          commit.body = "Automatic Generated Message: " + openAIRecommendation.body
+        } else {
+          commit.body = "Generation was not possible"
+        }
       })
   }
+  getQuestionRecommendationOfOpenAi(commit: Commit) {
+    this.apiService.getRecommendedQuestionOfOpenAi(this.createCommitToPublish(commit)).pipe(
+      catchError((err) => {
+        this.snackBar.open("Request had a Error," + err,"",{
+          duration: 2000
+        })
+        return throwError("Request had a Error" + err)
+      }))
+      .subscribe((openAIRecommendation) => {
+        if(openAIRecommendation.body !== null){
+          console.log("Recommended Questions: ", openAIRecommendation.body)
+          commit.recommendedQuestions = openAIRecommendation.body
+        }
+      })
+  }
+
 
   calculateMessageStrength(messageScore: number){
     console.log("messagescore was:", messageScore)
@@ -409,20 +427,7 @@ export class ConventionalCommitFormComponent{
     if(!form.valid) return
     this.committing = true
     console.log("committing ", this.commitPreviewMessage)
-    let patches: Patch[] = []
-
-    this.selectedCommit.hunks.forEach((hunkNumber) => {
-      let questionHunk = this.questionHunks[hunkNumber]
-      let found = patches.find((patch) => {patch.patchNumber === questionHunk.fileNumber});
-      if(found){
-        found.hunks.push(new Hunk(questionHunk.hunkNumber,this.selectedCommit.finalMessage))
-      }else {
-        patches.push(new Patch(questionHunk.fileNumber,questionHunk.filePath,[new Hunk(questionHunk.hunkNumber,"")],))
-      }
-    })
-
-    let commitToPublish = new CommitToPublish(this.selectedCommit.finalMessage,patches,this.selectedCommit.id)
-    this.apiService.postCommit(commitToPublish).pipe(
+    this.apiService.postCommit(this.createCommitToPublish(this.selectedCommit)).pipe(
       catchError((err) => {
         this.committing = false;
         this.snackBar.open("Request had a Error," + err,"",{
