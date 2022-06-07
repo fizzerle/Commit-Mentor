@@ -509,7 +509,6 @@ async def commitFiles(commitToPublish: CommitToPublish):
         tree,
         [parent.oid],
     )
-    finalModelScore = checkMessage(commitToPublish)
     commitProcess.statistics.numberOfCommits += 1
     statisticPerCommit = StatisticPerCommit()
 
