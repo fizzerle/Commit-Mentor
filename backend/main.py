@@ -488,7 +488,7 @@ async def commitFiles(commitToPublish: CommitToPublish):
 
     partialCommit(commitToPublish,commitProcess.uniDiffPatches)
     wholeFilesToAdd,wholeFilesToRemove = getFilesToAddAndToRemove(commitToPublish)
-
+    finalModelScore = checkMessage(commitToPublish)
     #commit files that are either new or deleted
     commitProcess.pyGit2Repository.index.read()
     for patch in commitToPublish.patches:
