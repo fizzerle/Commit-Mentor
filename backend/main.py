@@ -451,7 +451,7 @@ def writeArrayToCsv(name,arrayToWrite):
         writer = csv.writer(f)
         if not fileExists:
             questionNumbers = list(range(len(arrayToWrite)-1))
-            header = ['question' + str(n) for n in questionNumbers]
+            header = ['Question ' + str(n) for n in questionNumbers]
             header.insert(0,"uuid")
             writer.writerow(header)
         writer.writerow(arrayToWrite)
