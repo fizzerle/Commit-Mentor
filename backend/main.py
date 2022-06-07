@@ -583,8 +583,8 @@ def checkMessage(commitToPublish: CommitToPublish):
     global h
 
     if commitProcess.statistics.secondsSpentAnsweringHunks == 0:
-        commitProcess.statistics.finishedHunkAnsweringMilliseconds = time.time()
-        commitProcess.statistics.secondsSpentAnsweringHunks = time.time() - commitProcess.statistics.startHunkAnswering
+        commitProcess.statistics.finishedHunkAnsweringMilliseconds = round(time.time())
+        commitProcess.statistics.secondsSpentAnsweringHunks = round(time.time() - commitProcess.statistics.startHunkAnswering)
 
 
     message = commitToPublish.message
