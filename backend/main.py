@@ -520,12 +520,12 @@ async def commitFiles(commitToPublish: CommitToPublish):
     statisticPerCommit.uuid = commitProcess.statistics.uuid
     statisticPerCommit.commitMessage = commitToPublish.message.replace("\n","<enter>")
     statisticPerCommit.messageScoreFinal= finalModelScore
-    statisticPerCommit.secondsSpentAddingTheRational =  time.time() - commitProcess.statistics.finishedHunkAnsweringMilliseconds
+    statisticPerCommit.secondsSpentAddingTheRational =  round(time.time() - commitProcess.statistics.finishedHunkAnsweringMilliseconds)
     statisticPerCommit.commitMessageLength = len(commitToPublish.message)
     fieldnames = [attr for attr in dir(statisticPerCommit) if not callable(getattr(statisticPerCommit, attr)) and not attr.startswith("__")]
     writeObjectToCsv("commits.csv",vars(statisticPerCommit),fieldnames)
 
-    commitProcess.statistics.secondsSpentCommiting =  time.time() - commitProcess.statistics.startCommitingMilliseconds
+    commitProcess.statistics.secondsSpentCommiting =  round(time.time() - commitProcess.statistics.startCommitingMilliseconds)
 
 '''
 returns one hunk at a time to the frontend, in the order defined by the ordered hunks list
