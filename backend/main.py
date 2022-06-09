@@ -444,6 +444,7 @@ def writeArrayToCsv(name,arrayToWrite):
     fileExists = False
     if os.path.isfile(path):
         fileExists = True
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'a+', encoding='UTF8', newline='') as f:
         writer = csv.writer(f)
         if not fileExists:
@@ -458,6 +459,7 @@ def writeObjectToCsv(name,dictToWrite,fieldnames):
     fileExists = False
     if os.path.isfile(path):
         fileExists = True
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'a+', encoding='UTF8', newline='') as f:
         writer = csv.DictWriter(f,fieldnames=fieldnames)
         if not fileExists:
