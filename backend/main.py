@@ -333,8 +333,8 @@ async def getRecommendedQuestion(commitToPublish: CommitToPublish):
             answers.append([testQuestions[index],response.text,0])
     
     for answer in answers:
-        commitToPublish = CommitToPublish(id = commitToPublish.id,message = commitToPublish.message + answer[1][0:250], patches = commitToPublish.patches)
-        answer[2] = checkMessage(commitToPublish)
+        commitToCheck = CommitToPublish(id = commitToPublish.id,message = commitToPublish.message + answer[1][0:250], patches = commitToPublish.patches)
+        answer[2] = checkMessage(commitToCheck)
     
     logging.info("Got the score for all messages")
     def sortByScore(item):
