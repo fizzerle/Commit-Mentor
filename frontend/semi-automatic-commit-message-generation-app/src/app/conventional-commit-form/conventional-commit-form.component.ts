@@ -176,15 +176,15 @@ export class ConventionalCommitFormComponent{
     this.buildCommitMessageStringFromCommit(this.selectedCommit)
 
     //get a openai recommended message for every commit
-    this.commits.forEach((commit) => {
-      this.getCommitMessageRecommendationOfOpenAi(commit)
-    })
-
-    //get answers to rationale Questions of OpenAI
-    this.commits.forEach((commit) => {
-      this.getQuestionRecommendationOfOpenAi(commit)
-    })
-
+    if(this.commits.length <= 3) {
+      this.commits.forEach((commit) => {
+        this.getCommitMessageRecommendationOfOpenAi(commit)
+      })
+      //get answers to rationale Questions of OpenAI
+      this.commits.forEach((commit) => {
+        this.getQuestionRecommendationOfOpenAi(commit)
+      })
+    }
   }
 
   getEnumKeyByEnumValue<T extends {[index:string]:string}>(myEnum: T, enumValue:any) {

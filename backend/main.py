@@ -88,6 +88,7 @@ tokenizerGPT2 = None
 h = None
 net = None
 predictor = None
+workingDirectoryBackend = None
 
 
 '''
@@ -440,10 +441,12 @@ def getFilesToAddAndToRemove(commitToPublish):
     return (wholeFilesToAdd,wholeFilesToRemove)
 
 def writeArrayToCsv(name,arrayToWrite):
+    global workingDirectoryBackend
     path = "./dataForStudy/"+name
     fileExists = False
     if os.path.isfile(path):
         fileExists = True
+    os.chdir(workingDirectoryBackend)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'a+', encoding='UTF8', newline='') as f:
         writer = csv.writer(f)
@@ -459,6 +462,7 @@ def writeObjectToCsv(name,dictToWrite,fieldnames):
     fileExists = False
     if os.path.isfile(path):
         fileExists = True
+    os.chdir(workingDirectoryBackend)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'a+', encoding='UTF8', newline='') as f:
         writer = csv.DictWriter(f,fieldnames=fieldnames)
@@ -628,6 +632,8 @@ async def setupTokenizerAndModel():
     global tokenizerGPT2
     global net
     global h
+    global workingDirectoryBackend
+    workingDirectoryBackend = os.getcwd()
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
     openai.organization = "org-ky6BiuvqGjUO6kdRdRmIc3L6"
     openai.api_key = "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"
