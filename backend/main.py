@@ -412,7 +412,7 @@ def partialCommit(commitToPublish,uniDiffPatches):
                 text_file.write(hunkPatch)
 
             with open("partial.log", "w+",encoding='utf-8') as text_file:
-                process = subprocess.Popen(['git', 'apply', '--cached', '-v', commitProcess.projectPath+"\partial.patch"],
+                process = subprocess.Popen(['git', 'apply', '--cached', '-v', os.sep.join([commitProcess.projectPath, "partial.patch"])],
                                     stdout=text_file, 
                                     stderr=text_file)
                 process.communicate()
@@ -442,7 +442,7 @@ def getFilesToAddAndToRemove(commitToPublish):
 
 def writeArrayToCsv(name,arrayToWrite):
     global workingDirectoryBackend
-    path = "./dataForStudy/"+name
+    path = os.path.join(".","dataForStudy",name)
     fileExists = False
     if os.path.isfile(path):
         fileExists = True
@@ -458,7 +458,7 @@ def writeArrayToCsv(name,arrayToWrite):
         writer.writerow(arrayToWrite)
 
 def writeObjectToCsv(name,dictToWrite,fieldnames):
-    path = "./dataForStudy/"+name
+    path = os.path.join(".","dataForStudy",name)
     fileExists = False
     if os.path.isfile(path):
         fileExists = True
@@ -638,7 +638,7 @@ async def setupTokenizerAndModel():
     openai.organization = "org-ky6BiuvqGjUO6kdRdRmIc3L6"
     openai.api_key = "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"
     # Predictor used for preprocessing steps
-    predictor = Predictor.from_path("./tools/elmo-constituency-parser-2020.02.10.tar.gz")
+    predictor = Predictor.from_path(os.path.join(".","tools","elmo-constituency-parser-2020.02.10.tar.gz"))
     #other method to not load the predictor from local archive
     #predictor = pretrained.load_predictor("structured-prediction-constituency-parser")
     tokenizerGPT2 = GPT2TokenizerFast.from_pretrained("gpt2", model_max_length=2049)
